@@ -1,0 +1,78 @@
+[
+            {
+                "name": "service-a",
+                "config": {
+                    "maxWaitToBeReadyInSeconds": 10,
+                    "image": "nginx:latest",
+                    "detach": true,
+                    "volumes": {
+                        "{env_HTTPSERVERVOLUME}": {
+                            "bind": "/usr/share/nginx/html",
+                            "mode": "rw"
+                        }
+                    }
+                },
+                "httpReadinessChecks": [
+                    {
+                        "protocol": "http",
+                        "port": 80,
+                        "host": "{service-a_ip}",
+                        "url": "/ready1.json",
+                        "responseStatus": 200,
+                        "jsonBody": "{ \"code\" : 1, \"message\" : \"ready 1 message\"}"
+                    },
+                    {
+                        "protocol": "http",
+                        "port": 80,
+                        "host": "{service-a_ip}",
+                        "url": "/ready2.json",
+                        "responseStatus": 200,
+                        "jsonBody": "{ \"code\" : 2, \"message\" : \"ready 2 message\"}"
+                    }
+                ]
+            },
+            {
+                "name": "service-b",
+                "parent": "service-a",
+                "config": {
+                    "maxWaitToBeReadyInSeconds": 10,
+                    "image": "nginx:latest",
+                    "detach": true,
+                    "volumes": {
+                        "{env_HTTPSERVERVOLUME}": {
+                            "bind": "/usr/share/nginx/html",
+                            "mode": "rw"
+                        }
+                    }
+                },
+                "httpReadinessChecks": [
+                    {
+                        "protocol": "http",
+                        "port": 80,
+                        "host": "{service-a_ip}",
+                        "url": "/ready1.json",
+                        "responseStatus": 200,
+                        "jsonBody": "{ \"code\" : 1, \"message\" : \"ready 1 message\"}"
+                    },
+                    {
+                        "protocol": "http",
+                        "port": 80,
+                        "host": "{service-a_ip}",
+                        "url": "/ready2.json",
+                        "responseStatus": 200,
+                        "jsonBody": "{ \"code\" : 2, \"message\" : \"ready 2 message\"}"
+                    }
+                ]
+            }, {
+                "name": "test-script",
+                "execScript": true,
+                "config": {
+                    "file": "execScriptTest",
+                    "params": {
+                        "a": 1,
+                        "b": 2,
+                        "c": 3
+                    }
+                }
+            }
+        ]
