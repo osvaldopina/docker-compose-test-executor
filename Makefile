@@ -1,16 +1,18 @@
 
- .PHONY: verify lint format tests
 
 VERSION=0.0.1
 IMAGE_NAME=test_containers
 
+ .PHONY: clear_dev_env
 clear_dev_env:
 		rm -Rf .venv
 
+ .PHONY: create_dev_env
 create_dev_env:
 		python3 -m venv .venv
 		.venv/bin/pip install pip pep8 docker deepdiff pylint autopep8
 
+ .PHONY: lintcreate_dev_env
 lint:
 		pylint test_containers.py
 
@@ -48,11 +50,8 @@ exec_test_inside_container_container:
 		    -e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
 			-t $(IMAGE_NAME):latest
 
-createRequirements:
-		pip freeze > requirements.txt
-
 build: create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
 
 push: build
-		docker push -a $(IMAGE_NAME) 
+		docker push -a osvaldopina/$(IMAGE_NAME) 
   
