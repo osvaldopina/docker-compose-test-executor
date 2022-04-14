@@ -51,7 +51,7 @@ exec_test_inside_container_container:
 createRequirements:
 		pip freeze > requirements.txt
 
-build: format lint tests create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
+build: create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
 
 push: build
 		docker push -a osvaldopina/$(IMAGE_NAME) 
