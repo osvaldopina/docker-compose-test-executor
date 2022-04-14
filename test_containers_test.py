@@ -491,7 +491,7 @@ class DockerTestContainersTest(unittest.TestCase):
             time.sleep(1)
 
         client.containers.run(**{
-            'image': 'httpservertest:latest',
+            'image': 'nginx:latest',
             'detach': True,
             'name': 'service',
             'remove': True,
