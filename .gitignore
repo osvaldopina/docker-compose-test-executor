@@ -8,7 +8,6 @@
 .settings/
 *.sublime-workspace
 .venv
-.pylintrc
 workspace.code-workspace
 __pycache__/
 
