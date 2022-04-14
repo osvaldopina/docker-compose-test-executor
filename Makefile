@@ -23,7 +23,7 @@ tests:
 verify:  lint format tests
 
 create_container:
-		docker build . -t $(IMAGE_NAME):current -t $(IMAGE_NAME):latest -t $(IMAGE_NAME):$(VERSION)
+		docker build . -t $(IMAGE_NAME):latest -t $(IMAGE_NAME):$(VERSION)
 
 verify_inside_container:
 		docker run -it \
@@ -52,4 +52,7 @@ createRequirements:
 		pip freeze > requirements.txt
 
 build: format lint tests create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
+
+push: build
+		docker push -a osvaldopina/$(IMAGE_NAME) 
   
