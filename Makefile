@@ -26,7 +26,7 @@ create_container:
 		docker build . -t $(IMAGE_NAME):latest -t $(IMAGE_NAME):$(VERSION)
 
 verify_inside_container:
-		docker run -it \
+		docker run -t \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 			-v $(shell pwd):/opt/build/ \
 			-e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
@@ -39,14 +39,14 @@ exec_test_inside_container_script:
 			-v $(shell pwd)/testsConfig/execScriptTest.py:/app/execScriptTest.py \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 		    -e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
-			-it $(IMAGE_NAME):latest
+			-t $(IMAGE_NAME):latest
 
 exec_test_inside_container_container:
 		docker run \
 			-v $(shell pwd)/testsConfig/test_execContainer_config.json:/app/config.json \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 		    -e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
-			-it $(IMAGE_NAME):latest
+			-t $(IMAGE_NAME):latest
 
 createRequirements:
 		pip freeze > requirements.txt
