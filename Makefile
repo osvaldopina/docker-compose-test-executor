@@ -32,7 +32,7 @@ verify_inside_container:
 			-v /var/run/docker.sock:/var/run/docker.sock \
 			-v $(shell pwd):/opt/build/ \
 			-e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
-			$(IMAGE_NAME):latest \
+			osvaldopina/$(IMAGE_NAME):latest \
 			sh -c "cd /opt/build && make verify"
 
 exec_test_inside_container_script:
