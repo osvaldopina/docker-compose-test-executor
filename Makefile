@@ -53,5 +53,6 @@ exec_test_inside_container_container:
 build: create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
 
 push: build
-		docker push osvaldopina/$(IMAGE_NAME):latest osvaldopina/$(IMAGE_NAME):$(VERSION)
+#		docker push --all-tags osvaldopina/$(IMAGE_NAME):latest osvaldopina/$(IMAGE_NAME):$(VERSION)
+		docker push --all-tags osvaldopina/$(IMAGE_NAME)
   
