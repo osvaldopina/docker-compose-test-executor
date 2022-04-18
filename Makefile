@@ -41,14 +41,14 @@ exec_test_inside_container_script:
 			-v $(shell pwd)/testsConfig/execScriptTest.py:/app/execScriptTest.py \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 		    -e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
-			-t $(IMAGE_NAME):latest
+			-t osvaldopina/$(IMAGE_NAME):latest
 
 exec_test_inside_container_container:
 		docker run \
 			-v $(shell pwd)/testsConfig/test_execContainer_config.json:/app/config.json \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 		    -e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
-			-t $(IMAGE_NAME):latest
+			-t osvaldopina/$(IMAGE_NAME):latest
 
 build: create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
 
