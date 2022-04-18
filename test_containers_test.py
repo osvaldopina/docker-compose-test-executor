@@ -875,5 +875,6 @@ class TestSimpleTamplateEngine(unittest.TestCase):
             'prop2': 'other template cont1_name_value'
         }, templateEngine.replace(config))
 
+
 if __name__ == '__main__':
     unittest.main()
