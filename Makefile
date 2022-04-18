@@ -25,7 +25,7 @@ tests:
 verify:  lint format tests
 
 create_container:
-		docker build . -t $(IMAGE_NAME):latest -t $(IMAGE_NAME):$(VERSION)
+		docker build . -t osvaldopina/$(IMAGE_NAME):latest -t osvaldopina/$(IMAGE_NAME):$(VERSION)
 
 verify_inside_container:
 		docker run -t \
@@ -53,6 +53,5 @@ exec_test_inside_container_container:
 build: create_container verify_inside_container exec_test_inside_container_script exec_test_inside_container_container
 
 push: build
-#		docker push --all-tags osvaldopina/$(IMAGE_NAME):latest osvaldopina/$(IMAGE_NAME):$(VERSION)
 		docker push --all-tags osvaldopina/$(IMAGE_NAME)
   
