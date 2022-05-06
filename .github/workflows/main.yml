@@ -33,5 +33,5 @@ jobs:
         name: Check out
         uses: actions/checkout@v2
       -
-         name: deploy container to docker hub
+         name: Build and deploy container to docker hub
          run: make push
