@@ -111,16 +111,16 @@ class SimpleTemplateEngine():
         self.context = context
         self._getEnv = os.getenv
 
-    def _getEnvironmentVariable(self, key:str) -> str:
+    def _getEnvironmentVariable(self, key: str) -> str:
         envValue = self._getEnv(key)
         if not envValue:
             print(f'Could not find env {key}')
             print(f'All envs: (total:{len(os.environ)})')
             for env, value in os.environ.items():
                 print(f'    {env}={value}')
-            raise Exception(f'Could no find env {key} (do not use underscore in environment variable keys)')
-        else:
-            return envValue
+            raise Exception(
+                f'Could no find env {key} (do not use underscore in environment variable keys)')
+        return envValue
 
     def _getVars(self, template: str):
         return [i[1] for i in Formatter().parse(template) if i[1] is not None]
@@ -135,7 +135,8 @@ class SimpleTemplateEngine():
         result = {}
         for tempVariable in self._getTemplateVariables(template):
             if tempVariable[0] == 'env':
-                result[tempVariable[0] + '_' + tempVariable[1]] = self._getEnvironmentVariable(tempVariable[1])
+                result[tempVariable[0] + '_' + tempVariable[1]
+                       ] = self._getEnvironmentVariable(tempVariable[1])
             else:
                 result[tempVariable[0] + '_' + tempVariable[1]
                        ] = self.context.getValue(tempVariable[0], tempVariable[1])
@@ -300,16 +301,25 @@ class BaseTestContainers:
 
     def runExec(self) -> int:
         if not self.execScriptFile is None:
-            return self.runExecScript(self.context.replace(self.execScriptParams))
+            return self.runExecScript(
+                self.context.replace(self.execScriptParams))
         return self.runExecContainer()
 
     def runExecContainer(self) -> int:
         self.execContainer.start()
         return self.execContainer.getExitStatus()
 
-    def runExecScript(self, scriptParams) -> int:
-        loader = importlib.machinery.SourceFileLoader('script',self.execScriptFile)
+    def runExecScript(self, scriptParams=None) -> int:
+        # pylint: disable=deprecated-method
+
+        loader = importlib.machinery.SourceFileLoader(
+            'script', self.execScriptFile)
         handle = loader.load_module('script')
+
+        if scriptParams is None:
+            scriptParams = {}
+        if not isinstance(scriptParams, dict):
+            raise Exception('scriptParams if informed must be a dict')
 
         return handle.main(**scriptParams)
 

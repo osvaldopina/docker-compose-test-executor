@@ -747,7 +747,7 @@ class DockerTestContainersTest(unittest.TestCase):
                 'name': 'test-script',
                 'execScript': True,
                 'config': {
-                    'file': 'execScriptTest',
+                    'file': 'execScriptTest.py',
                     'params': {
                         'a': 1,
                         'b': 2,
@@ -773,7 +773,10 @@ class DockerTestContainersTest(unittest.TestCase):
         self.assertTrue(
             any(container.name == 'service-b' for container in containers))
 
-        self.assertEqual(6, dockerTestContainers.runExecScript())
+        self.assertEqual(0, dockerTestContainers.runExecScript())
+        self.assertEqual(0, dockerTestContainers.runExecScript({}))
+        self.assertEqual(6, dockerTestContainers.runExecScript(
+            {'a': 1, 'b': 2, 'c': 3}))
 
         dockerTestContainers.stop()
         containers = client.containers.list(all=True)
