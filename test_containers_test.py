@@ -25,7 +25,7 @@ class MockBaseContainer(BaseContainer):
 
     def __init__(self, maxWaitTimeInSeconds: int, name: str,
                  dependent: list['MockBaseContainer']):
-        super().__init__(maxWaitTimeInSeconds, dependent, [])
+        super().__init__(maxWaitTimeInSeconds, 0, dependent, [])
         self.name = name
         self.ready = False
         self.started = False
@@ -226,7 +226,7 @@ class BaseTestContainersTest(unittest.TestCase):
 class MockContainerForReadinessTest(BaseContainer):
 
     def __init__(self):
-        super().__init__(10, [], [])
+        super().__init__(10, 0, [], [])
 
     def getIp(self) -> str:
         return 'localhost'
@@ -379,6 +379,94 @@ class HttpServerForReadinessTest(unittest.TestCase):
 
 
 class DockerTestContainersTest(unittest.TestCase):
+
+    def testMinWaitToBeReadyInSeconds(self):
+
+        # Container with minWaitToBeReadyInSeconds 0 has getTimeToBeReady
+        # smaller then 10 seconds
+        containersConfig = [
+            {
+                'name': 'service-sub-parent',
+                'config': {
+                    'maxWaitToBeReadyInSeconds': 15,
+                    'minWaitToBeReadyInSeconds': 0,
+                    'image': 'nginx:latest',
+                    'detach': True,
+                    'ports': {
+                        '80/tcp': '8086'
+                    },
+                    'volumes': {
+                        '{env_HTTPSERVERVOLUME}' if insideContainer() else os.path.join(os.getcwd(), 'httpservervolume'): {
+                            'bind': '/usr/share/nginx/html',
+                            'mode': 'rw'
+                        }
+                    }
+                },
+                'httpReadinessChecks': [
+                    {
+                        'protocol': 'http',
+                        'host': 'localhost',
+                        'port': 80 if insideContainer() else 8086,
+                        'host': '{service-sub-parent_ip}' if insideContainer() else 'localhost',
+                        'url': '/ready1.json',
+                        'responseStatus': 200,
+                        'test-value': '{service-sub-parent_ip}',
+                        'jsonBody': '{ "code" : 1, "message" : "ready 1 message"}'
+                    }
+                ],
+            }
+        ]
+
+        dockerTestContainers = DockerTestContainers(containersConfig)
+
+        self.assertTrue(dockerTestContainers.start())
+        self.assertTrue(
+            dockerTestContainers.rootContainers[0].getTimeToBeReady() < 10)
+
+        dockerTestContainers.stop()
+
+        # Container with minWaitToBeReadyInSeconds 10 has getTimeToBeReady
+        # grather then 10 seconds
+        containersConfig = [
+            {
+                'name': 'service-sub-parent',
+                'config': {
+                    'maxWaitToBeReadyInSeconds': 15,
+                    'minWaitToBeReadyInSeconds': 10,
+                    'image': 'nginx:latest',
+                    'detach': True,
+                    'ports': {
+                        '80/tcp': '8086'
+                    },
+                    'volumes': {
+                        '{env_HTTPSERVERVOLUME}' if insideContainer() else os.path.join(os.getcwd(), 'httpservervolume'): {
+                            'bind': '/usr/share/nginx/html',
+                            'mode': 'rw'
+                        }
+                    }
+                },
+                'httpReadinessChecks': [
+                    {
+                        'protocol': 'http',
+                        'host': 'localhost',
+                        'port': 80 if insideContainer() else 8086,
+                        'host': '{service-sub-parent_ip}' if insideContainer() else 'localhost',
+                        'url': '/ready1.json',
+                        'responseStatus': 200,
+                        'test-value': '{service-sub-parent_ip}',
+                        'jsonBody': '{ "code" : 1, "message" : "ready 1 message"}'
+                    }
+                ],
+            }
+        ]
+
+        dockerTestContainers = DockerTestContainers(containersConfig)
+
+        self.assertTrue(dockerTestContainers.start())
+        self.assertTrue(
+            dockerTestContainers.rootContainers[0].getTimeToBeReady() > 10)
+
+        dockerTestContainers.stop()
 
     def testSubstituteValuesInConfig(self):
 

@@ -23,12 +23,14 @@ def activateLog():
 
 class BaseContainer:
 
-    def __init__(self, maxWaitToBeReadyInSeconds, dependent: list['BaseContainer'],
-                 readinessChecks: list['BaseReadinessCheck']):
+    def __init__(self, maxWaitToBeReadyInSeconds, minWaitToBeReadyInSeconds,
+                 dependent: list['BaseContainer'], readinessChecks: list['BaseReadinessCheck']):
         self.dependent: list[BaseContainer] = dependent
         self.readinessChecks = readinessChecks
         self.startTime = -1
+        self.timeToBeReady = -1
         self.maxWaitToBeReadyInSeconds = maxWaitToBeReadyInSeconds
+        self.minWaitToBeReadyInSeconds = minWaitToBeReadyInSeconds
 
     def getName(self) -> str:
         raise NotImplementedError(
@@ -50,11 +52,26 @@ class BaseContainer:
     def getMaxWaitToBeReadyInSeconds(self) -> int:
         return self.maxWaitToBeReadyInSeconds
 
+    def getMinWaitToBeReadyInSeconds(self) -> int:
+        return self.minWaitToBeReadyInSeconds
+
     def isReady(self) -> bool:
         for readinessCheck in self.readinessChecks:
             if not readinessCheck.isReady(self):
                 return False
+
+        if not self.__minWaitTimeToReadyPassed():
+            return False
+
+        self.timeToBeReady = time.time() - self.startTime
         return True
+
+    def getTimeToBeReady(self):
+        return self.timeToBeReady
+
+    def __minWaitTimeToReadyPassed(self) -> bool:
+        return self.startTime != -1 and \
+            (time.time() - self.startTime) > self.minWaitToBeReadyInSeconds
 
     def getDependents(self) -> list['BaseContainer']:
         return self.dependent
@@ -94,6 +111,8 @@ class Context:
 
     def getValue(self, containerName: str, variable: str):
         container = self._getContainer(self.rootContainers, containerName)
+        if container is None:
+            raise Exception(f'Could no find container named {containerName}')
         if variable == 'ip':
             return container.getIp()
         if variable == 'name':
@@ -421,10 +440,13 @@ class DockerContainer(BaseContainer):
                  readinessChecks: list['BaseReadinessCheck']):
         super().__init__(config['config']['maxWaitToBeReadyInSeconds']
                          if 'maxWaitToBeReadyInSeconds' in config['config'] else 60,
+                         config['config']['minWaitToBeReadyInSeconds']
+                         if 'minWaitToBeReadyInSeconds' in config['config'] else 0,
                          [], readinessChecks)
         self.context = context
         self.config = config['config']
         self.config.pop('maxWaitToBeReadyInSeconds', None)
+        self.config.pop('minWaitToBeReadyInSeconds', None)
         self.name = config['name']
         self.execContainer = config['execContainer'] if 'execContainer' in config else False
         self.ip = ''
