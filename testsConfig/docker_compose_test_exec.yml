@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+    service-a:
+        image: "nginx:latest"
+        container_name: service-a
+        volumes:
+            - ${HTTPSERVERVOLUME}:/usr/share/nginx/html:r
+        x-http-readiness-checks:
+            - protocol: http
+              port: 80
+              host: service-a
+              url: /ready1.json
+              response-status: 200,
+              json-body: { "code" : 1, "message" : "ready 1 message"}
+            - protocol: http
+              port: 80
+              host: localhost
+              url: /ready2.json
+              response-status: 200
+              json-body: { "code" : 2, "message" : "ready 2 message"}
+    service-b:
+        image: "nginx:latest"
+        container_name: service-a
+        volumes:
+            - ${HTTPSERVERVOLUME}:/usr/share/nginx/html:r
+        x-http-readiness-checks:
+            - protocol: http
+              port: 80
+              host: service-b
+              url: /ready1.json
+              response-status: 200,
+              json-body: { "code" : 1, "message" : "ready 1 message"}
+            - protocol: http
+              port: 80
+              host: service-b
+              url: /ready2.json
+              response-status: 200
+              json-body: { "code" : 2, "message" : "ready 2 message"}
+        depends_on:
+          - service-a
+    exec-container:
+        image: busybox:latest
+        environment:
+          - "EXEC_CONTAINER_EXIT_CODE=0"
+        x-exec-container:
+          max-wait-to-be-ready-seconds": 10
+          command: sh -c "exit ${{EXEC_CONTAINER_EXIT_CODE}}"
