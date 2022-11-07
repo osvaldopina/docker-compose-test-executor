@@ -15,7 +15,7 @@ class BaseContainerService:
     def get_service_status(self, service_name: str) -> ServiceStatus:
         pass
 
-    def start_service(self, servive_name: str) -> None:
+    def start_service(self, service_name: str) -> None:
         pass
 
 
@@ -77,6 +77,13 @@ class Services:
         result = []
         services_status = self.get_services_status()
 
+        all_started = True
+        for service_name in services_status:
+            all_started = all_started and (services_status[service_name]['status'] == ServiceStatus.READY)
+
+        if all_started:
+            return None
+
         for service_name in self.get_services_with_dependency():
             if self.check_all_dependents_ready(service_name):
                 result.append(service_name)
@@ -87,5 +94,14 @@ class Services:
 
         return result
 
-    def start_all_availabe_serverice(self) -> bool:
-        pass
+    def start_all_available_services(self) -> bool:
+
+        services = self.get_services_ready_to_start()
+
+        if services is None:
+            return False
+
+        for service_name in services:
+            self.container_service.start_service(service_name)
+
+        return True
