@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from test_containers import ServiceStatus, Services, BaseContainerService
+from test_containers import ServiceStatus, Services, BaseContainerService, ContainerService
 
 
 class MockContainerService(BaseContainerService):
@@ -93,7 +93,6 @@ class ServicesTestCase(unittest.TestCase):
         self.assertEquals([], services.get_services_ready_to_start())
 
     def test_get_services_ready_to_start_service_a_ready_service_b_not_started(self):
-
         status = {
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_STARTED,
@@ -103,7 +102,6 @@ class ServicesTestCase(unittest.TestCase):
         self.assertEquals(['service-b'], services.get_services_ready_to_start())
 
     def test_get_services_ready_to_start_service_a_ready_service_b_not_ready(self):
-
         status = {
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_STARTED,
@@ -113,7 +111,6 @@ class ServicesTestCase(unittest.TestCase):
         self.assertEqual([], services.get_services_ready_to_start())
 
     def test_start_all_available_service_service_a_not_started_service_b_not_started(self):
-
         status = {
             'service-a': ServiceStatus.NOT_STARTED,
             'service-b': ServiceStatus.NOT_STARTED,
@@ -146,9 +143,7 @@ class ServicesTestCase(unittest.TestCase):
             }
         }, services.get_services_status())
 
-
     def test_start_all_available_service_service_a_not_ready_service_b_not_started(self):
-
         status = {
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_STARTED,
@@ -181,9 +176,7 @@ class ServicesTestCase(unittest.TestCase):
             }
         }, services.get_services_status())
 
-
     def test_start_all_available_service_service_a_ready_service_b_not_started(self):
-
         status = {
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_STARTED,
@@ -217,7 +210,6 @@ class ServicesTestCase(unittest.TestCase):
         }, services.get_services_status())
 
     def test_start_all_available_service_service_a_ready_service_b_not_ready(self):
-
         status = {
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_READY,
@@ -251,7 +243,6 @@ class ServicesTestCase(unittest.TestCase):
         }, services.get_services_status())
 
     def test_start_all_available_service_service_a_ready_service_b_ready(self):
-
         status = {
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.READY,
@@ -271,6 +262,23 @@ class ServicesTestCase(unittest.TestCase):
         }, services.get_services_status())
 
         self.assertFalse(services.start_all_available_services())
+
+
+class ContainerServiceTestCase(unittest.TestCase):
+
+    def test_start_service_test(self):
+
+        container_service = ContainerService(
+            Path('../testsConfig/docker_compose_test_exec.yml'),
+            environment=
+            {
+                'HTTP_'
+
+            })
+
+        container_service.start_service('service-a')
+
+        container_service.get_service_status('service-a')
 
 
 if __name__ == '__main__':

@@ -1,7 +1,11 @@
+import os
 from enum import Enum
 
+import docker
 import yaml
 from pathlib import Path
+
+from docker.errors import NotFound
 
 
 class ServiceStatus(Enum):
@@ -21,8 +25,8 @@ class BaseContainerService:
 
 class Services:
 
-    def __init__(self, path: Path, container_service: BaseContainerService):
-        self.compose_file = yaml.safe_load(path.read_text())
+    def __init__(self, compose_file_path: Path, container_service: BaseContainerService):
+        self.compose_file = yaml.safe_load(compose_file_path.read_text())
         self.container_service = container_service
 
     def get_services_status(self) -> dict:
@@ -105,3 +109,41 @@ class Services:
             self.container_service.start_service(service_name)
 
         return True
+
+
+class ContainerService(BaseContainerService):
+
+    def __init__(self, compose_file_path: Path, **kwargs):
+        self.docker_client = docker.from_env()
+        self.compose_file_path = compose_file_path
+        self.environment = kwargs.get('environment', os.environ)
+
+    def get_service_status(self, service_name: str) -> ServiceStatus:
+        try:
+            container = self.docker_client.containers.get(service_name)
+            return container.status != 'exited'
+        except NotFound:
+            return ServiceStatus.NOT_STARTED
+
+        pass
+
+    def start_service(self, service_name: str) -> None:
+        try:
+            container = self.docker_client.containers.run(
+                'docker/compose:alpine-1.29.2',
+                f'-f /opt/docker-compose.yml up {service_name}',
+                volumes={
+                    str(self.compose_file_path.absolute()): {
+                        'bind': '/opt/docker-compose.yml',
+                        'mode': 'ro'
+                    },
+                    '/var/run/docker.sock': {
+                        'bind': '/var/run/docker.sock'
+                    }
+                },
+                environment=self.environment
+            )
+        except Exception as e:
+            print(e)
+
+        print(container)
