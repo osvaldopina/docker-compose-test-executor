@@ -245,7 +245,7 @@ def startServerOtherThread():
 
     daemon = threading.Thread(name='daemon_server',
                               target=startServer)
-    daemon.setDaemon(True)
+    daemon.daemon = True
     daemon.start()
     time.sleep(5)
 
