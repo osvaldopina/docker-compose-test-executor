@@ -2,8 +2,9 @@ import http
 import json
 import os
 import ssl
+import time
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, Callable
 
 import deepdiff
 import docker
@@ -47,9 +48,7 @@ class Services:
             service = self.compose_file['services'][service_name]
             if 'x-exec-container' in service:
                 break
-            service_status = {
-                'status': self.container_service.get_service_status(service_name)
-            }
+            service_status = {'status': self.container_service.get_service_status(service_name)}
             if 'depends_on' in service:
                 dependency_status = {}
                 for dependency_name in service['depends_on']:
@@ -122,25 +121,64 @@ class Services:
 
         return True
 
+    @staticmethod
+    def transform_status_to_log(status: dict) -> list[str]:
+        result = []
+
+        first = True
+        for service_name in status:
+            if first:
+                first = False
+            else:
+                result.append('')
+            service_status = status[service_name]
+            result.append(f'{service_name} : {service_status["status"].name}')
+            if 'dependencies' in service_status:
+                deps = service_status['dependencies']
+                for dep_name in deps:
+                    result.append(f'    -> {dep_name} : {deps[dep_name].name}')
+
+        return result
+
+    def start(self, verification_step_millis: int, presentation_step_millis: int,
+              presentation: Callable[[list[str]], None]) -> int:
+
+        presentation(Services.transform_status_to_log(self.get_services_status()))
+        last_presentation = time.time()
+        while True:
+            last_verification = time.time()
+            self.start_all_available_services()
+            if (time.time() - last_presentation) * 1_000 > presentation_step_millis:
+                presentation(Services.transform_status_to_log(self.get_services_status()))
+                last_presentation = time.time()
+            if (time.time() - last_verification) * 1_000 < verification_step_millis:
+                time.sleep(verification_step_millis // 1_000)
+
 
 class ContainerService(BaseContainerService):
 
     def __init__(self, compose_file_path: Path, **kwargs):
         self.docker_client = docker.from_env()
         self.compose_file_path = compose_file_path
+        self.compose_file = yaml.safe_load(compose_file_path.read_text())
         self.environment = kwargs.get('environment', os.environ)
+        if 'readiness_check' in kwargs:
+            self.readiness_check = kwargs.get('readiness_check')
+        else:
+            self.readiness_check = HttpReadinessCheck(self.compose_file)
 
     def get_service_status(self, service_name: str) -> ServiceStatus:
         try:
             container = self.docker_client.containers.get(service_name)
             if container.status in ['created', 'running', 'restarting']:
-                return ServiceStatus.NOT_READY
+                if self.readiness_check.is_ready(service_name):
+                    return ServiceStatus.READY
+                else:
+                    return ServiceStatus.NOT_READY
             else:
                 return ServiceStatus.INVALID
         except NotFound:
             return ServiceStatus.NOT_STARTED
-
-        pass
 
     def start_service(self, service_name: str) -> None:
         self.docker_client.containers.run(
@@ -159,10 +197,16 @@ class ContainerService(BaseContainerService):
             detach=True
         )
 
+    def _stop_service(self, service_name: str) -> None:
+        try:
+            container = self.docker_client.containers.get(service_name)
+            container.stop()
+        except NotFound:
+            pass
+
 
 def check(config: dict) -> Tuple[bool, any]:
     connection = None
-    not_ready_cause = None
     try:
         if config['protocol'] == 'https':
             connection = http.client.HTTPSConnection(
@@ -173,8 +217,8 @@ def check(config: dict) -> Tuple[bool, any]:
             connection = http.client.HTTPConnection(
                 host=config['host'],
                 port=config['port'])
-        connection.request(  #
-            method='GET',  #
+        connection.request(
+            method='GET',
             url=config['url'],
             headers=config['headers'] if 'headers' in config else {})
         response = connection.getresponse()
@@ -197,15 +241,21 @@ def check(config: dict) -> Tuple[bool, any]:
 
 class HttpReadinessCheck(BaseReadinessCheck):
 
-    def __init__(self, compose_file: dict):
+    def __init__(self, compose_file: dict, check_function=check):
         self._not_ready_cause = None
         self.compose_file = compose_file
+        self.check_function = check_function
 
     def is_ready(self, service_name: str) -> bool:
-
         all_true = True
 
         for config in self.compose_file['services'][service_name]['x-http-readiness-checks']:
-            all_true = all_true and check(config)
+            all_true = all_true and self.check_function(config)
 
         return all_true
+
+
+class TestContainer:
+
+    def __int__(self, compose_file_path: Path):
+        self.services = Services(compose_file_path, ContainerService(compose_file_path))
