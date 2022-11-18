@@ -21,3 +21,7 @@ __pycache__/
 # System Files
 .DS_Store
 Thumbs.db
+
+# pyton module files
+src/build/
+src/test_containers.egg-info/
