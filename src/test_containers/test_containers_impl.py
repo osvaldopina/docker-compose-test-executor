@@ -95,7 +95,7 @@ class Services:
             all_true = all_true and (self.container_service.get_service_status(dependency_name) == ServiceStatus.READY)
         return all_true
 
-    def get_services_ready_to_start(self) -> list[str]:
+    def get_services_ready_to_start(self) -> list[str] | None:
         result = []
         services_status = self.get_services_status()
 
@@ -216,7 +216,7 @@ class ContainerService(BaseContainerService):
             detach=True
         )
 
-    def _get_exec_container_name(self) -> str:
+    def _get_exec_container_name(self) -> str | None:
         for service_name in self.compose_file['services']:
             if 'x-exec-container' in self.compose_file['services'][service_name]:
                 return service_name
@@ -325,7 +325,7 @@ class TestContainer:
         self.last_lines_showed = len(lines_to_show)
 
     def start(self, verification_step_millis: int, presentation_step_millis: int, until: str = None):
-        self.services.start(verification_step_millis, presentation_step_millis, self._present_status)
+        self.services.start(verification_step_millis, presentation_step_millis, self._present_status, until)
 
     def show_status(self):
         self.services.show_status(self._present_status)
