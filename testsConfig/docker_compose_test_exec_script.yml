@@ -9,18 +9,22 @@ services:
         port: 80
         host: service-a
         url: /ready1.json
-        response-status: 200,
-        json-body: { "code": 1, "message": "ready 1 message" }
+        response-status: 200
+        json-body:
+          code: 1
+          message: ready 1 message
       - protocol: http
         port: 80
         host: localhost
         url: /ready2.json
         response-status: 200
-        json-body: { "code": 2, "message": "ready 2 message" }
+        json-body:
+          code: 2
+          message: ready 2 message
 
   service-b:
     image: "nginx:latest"
-    container_name: service-a
+    container_name: service-b
     volumes:
       - ${HTTP_SERVER_VOLUME}:/usr/share/nginx/html:ro
     x-http-readiness-checks:
@@ -29,20 +33,26 @@ services:
         host: service-b
         url: /ready1.json
         response-status: 200,
-        json-body: { "code": 1, "message": "ready 1 message" }
+        json-body:
+          code: 1
+          message: ready 1 message
       - protocol: http
         port: 80
         host: service-b
         url: /ready2.json
         response-status: 200
-        json-body: { "code": 2, "message": "ready 2 message" }
+        json-body:
+          code: 2
+          message: ready 2 message
     depends_on:
       - service-a
 
   exec-container:
-    image: busybox:latest
-    environment:
-      - EXEC_CONTAINER_EXIT_CODE=0
+    image:  python:3.9.15-alpine3.15
+    container_name: exec-container
+    volumes:
+      - ${VENV_PATH}:/opt/venv:ro
+      - ${SCRIPT}:/opt/script.py
+    command: sh -c "source /opt/venv/bin/activate && python /opt/script.py"
     x-exec-container:
-      max-wait-to-be-ready-seconds": 10
-      command: sh -c 'exit ${EXEC_CONTAINER_EXIT_CODE}'
+      max-wait-to-be-ready-seconds: 10

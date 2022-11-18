@@ -1,5 +1,5 @@
+import sys
 
-
-def main(**params):
-    print(f'params a={params["a"]} b={params["b"]} c={params["c"]}')
-    return 0
+if __name__ == '__main__':
+    print('aqui!!!!!!!!!')
+    sys.exit(22)

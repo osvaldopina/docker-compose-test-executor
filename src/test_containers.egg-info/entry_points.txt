@@ -1,0 +1,3 @@
+[console_scripts]
+test-containers = test_containers.main:cli
+

@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: test-containers
+Version: 1.0.0
+Summary: tool to execute tests using docker compose
+Home-page: https://github.com/osvaldopina/testcontainers
+Author: Osvaldo Pina
+Author-email: osvaldo.pina@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+
+UNKNOWN
+
