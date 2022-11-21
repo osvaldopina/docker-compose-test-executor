@@ -24,4 +24,5 @@ Thumbs.db
 
 # pyton module files
 src/build/
-src/test_containers.egg-info/
+src/*.egg-info/
+src/dc_test_exec/_trial_temp/
