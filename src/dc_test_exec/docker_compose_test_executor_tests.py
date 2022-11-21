@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from test_containers_impl import ServiceStatus, Services, BaseContainerService, ContainerService, check, \
+from docker_compose_test_executor import ServiceStatus, Services, BaseContainerService, ContainerService, check, \
     HttpReadinessCheck
 
 
@@ -43,7 +43,8 @@ class ServicesTestCase(unittest.TestCase):
             }
         }
 
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual(expected, services.get_services_status())
 
@@ -62,7 +63,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_STARTED,
         }
 
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
         self.assertFalse(services.check_all_dependents_ready('service-b'))
 
     def test_all_dependents_ready_false_dependent_not_ready(self):
@@ -70,14 +72,16 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_READY,
         }
 
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
         self.assertFalse(services.check_all_dependents_ready('service-b'))
 
     def test_all_dependents_ready_true(self):
         status = {
             'service-a': ServiceStatus.READY,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertTrue(services.check_all_dependents_ready('service-b'))
 
@@ -86,7 +90,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_STARTED,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertEqual(['service-a'], services.get_services_ready_to_start())
 
@@ -95,7 +100,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertEqual([], services.get_services_ready_to_start())
 
@@ -104,7 +110,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertEqual(['service-b'], services.get_services_ready_to_start())
 
@@ -113,7 +120,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertEqual([], services.get_services_ready_to_start())
 
@@ -122,7 +130,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_STARTED,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual({
             'service-a': {
@@ -155,7 +164,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual({
             'service-a': {
@@ -188,7 +198,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_STARTED,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual({
             'service-a': {
@@ -221,7 +232,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_READY,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual({
             'service-a': {
@@ -254,7 +266,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.READY,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertDictEqual({
             'service-a': {
@@ -275,7 +288,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.NOT_READY,
             'service-b': ServiceStatus.NOT_READY,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertTrue(services.start_all_available_services('service-a'))
 
@@ -284,7 +298,8 @@ class ServicesTestCase(unittest.TestCase):
             'service-a': ServiceStatus.READY,
             'service-b': ServiceStatus.NOT_READY,
         }
-        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'), MockContainerService(status))
+        services = Services(Path('../../testsConfig/docker_compose_test_exec_container.yml'),
+                            MockContainerService(status))
 
         self.assertFalse(services.start_all_available_services('service-a'))
 
@@ -506,12 +521,12 @@ class HttpReadinessCheckTest(unittest.TestCase):
         compose_file = yaml.safe_load(Path('../../testsConfig/docker_compose_test_exec_container.yml').read_text())
         http_readiness_check = HttpReadinessCheck(compose_file, mock_check.check)
 
-        self.assertTrue(http_readiness_check.is_ready('service-a'))
+        self.assertTrue(http_readiness_check.is_ready('service-a', 'ip'))
         self.assertEqual([
             {
                 'protocol': 'http',
                 'port': 80,
-                'host': 'service-a',
+                'service-ip': 'ip',
                 'url': '/ready1.json',
                 'response-status': 200,
                 'json-body': {'code': 1, 'message': 'ready 1 message'}
@@ -519,7 +534,7 @@ class HttpReadinessCheckTest(unittest.TestCase):
             {
                 'protocol': 'http',
                 'port': 80,
-                'host': 'localhost',
+                'service-ip': 'ip',
                 'url': '/ready2.json',
                 'response-status': 200,
                 'json-body': {'code': 2, 'message': 'ready 2 message'}

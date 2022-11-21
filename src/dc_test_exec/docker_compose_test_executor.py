@@ -35,7 +35,7 @@ class BaseContainerService:
 
 class BaseReadinessCheck:
 
-    def is_ready(self, service_name: str) -> bool:
+    def is_ready(self, service_name: str, service_ip: str) -> bool:
         pass
 
 
@@ -184,13 +184,22 @@ class ContainerService(BaseContainerService):
     def __del__(self):
         self.docker_client.close()
 
+    def _get_container_ip(self, container):
+        if 'IPAddress' in container.attrs['NetworkSettings']:
+            if container.attrs['NetworkSettings']['IPAddress'].strip():
+                return container.attrs['NetworkSettings']['IPAddress']
+        if len(container.attrs['NetworkSettings']['Networks'].keys()) > 0:
+            first_network = list(container.attrs['NetworkSettings']['Networks'].keys())[0]
+            return container.attrs['NetworkSettings']['Networks'][first_network]['IPAddress']
+        raise Exception(f'Could not find Ip for container {container.attrs["Name"]}')
+
     def get_service_status(self, service_name: str) -> ServiceStatus:
         try:
             container = self.docker_client.containers.get(service_name)
             if container.status == 'exited':
                 return ServiceStatus.NOT_STARTED
             if container.status in ['created', 'running', 'restarting']:
-                if self.readiness_check.is_ready(service_name):
+                if self.readiness_check.is_ready(service_name,self._get_container_ip(container)):
                     return ServiceStatus.READY
                 else:
                     return ServiceStatus.NOT_READY
@@ -258,12 +267,12 @@ def check(config: dict) -> Tuple[bool, any]:
     try:
         if config['protocol'] == 'https':
             connection = http.client.HTTPSConnection(
-                host=config['host'],
+                host=config['host'] if 'host' in config else config['service-ip'],
                 port=config['port'],
                 context=ssl._create_unverified_context())
         else:
             connection = http.client.HTTPConnection(
-                host=config['host'],
+                host=config['host'] if 'host' in config else config['service-ip'],
                 port=config['port'])
         connection.request(
             method='GET',
@@ -294,10 +303,11 @@ class HttpReadinessCheck(BaseReadinessCheck):
         self.compose_file = compose_file
         self.check_function = check_function
 
-    def is_ready(self, service_name: str) -> bool:
+    def is_ready(self, service_name: str, service_ip: str) -> bool:
         all_true = True
 
         for config in self.compose_file['services'][service_name]['x-http-readiness-checks']:
+            config['service-ip'] = service_ip
             all_true = all_true and self.check_function(config)
 
         return all_true

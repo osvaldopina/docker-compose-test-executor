@@ -1,17 +1,23 @@
 from setuptools import setup
 
 setup(
-    name="test_containers",
+    name="dc_test_exec",
     version="1.0.0",
-    description="tool to execute tests using docker compose",
+    description="docker compose test executor - tool to execute tests using docker compose",
     author="Osvaldo Pina",
     author_email="osvaldo.pina@gmail.com",
     url="https://github.com/osvaldopina/testcontainers",
-    packages=['test_containers'],
+    packages=['dc_test_exec'],
     entry_points={
         "console_scripts": [
-            'test-containers = test_containers.main:cli'
+            'dc-test-exec=dc_test_exec.main:cli'
         ]
-    }
+    },
+    install_requires=[
+        'deepdiff',
+        'docker',
+        'pyyaml',
+        'click'
+    ]
 
 )
