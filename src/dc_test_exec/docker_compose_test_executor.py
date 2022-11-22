@@ -5,11 +5,11 @@ import ssl
 import time
 from enum import Enum
 from typing import Tuple, Callable
+from pathlib import Path
 
 import deepdiff
 import docker
 import yaml
-from pathlib import Path
 
 from docker.errors import NotFound
 
@@ -33,6 +33,7 @@ class BaseContainerService:
         pass
 
 
+# pylint: disable=too-few-public-methods
 class BaseReadinessCheck:
 
     def is_ready(self, service_name: str, service_ip: str) -> bool:
@@ -41,7 +42,8 @@ class BaseReadinessCheck:
 
 class Services:
 
-    def __init__(self, compose_file_path: Path, container_service: BaseContainerService):
+    def __init__(self, compose_file_path: Path,
+                 container_service: BaseContainerService):
         self.compose_file = yaml.safe_load(compose_file_path.read_text())
         self.container_service = container_service
 
@@ -51,11 +53,13 @@ class Services:
             service = self.compose_file['services'][service_name]
             if self.is_exec_service(service):
                 break
-            service_status = {'status': self.container_service.get_service_status(service_name)}
+            service_status = {
+                'status': self.container_service.get_service_status(service_name)}
             if 'depends_on' in service:
                 dependency_status = {}
                 for dependency_name in service['depends_on']:
-                    dependency_status[dependency_name] = self.container_service.get_service_status(dependency_name)
+                    dependency_status[dependency_name] = self.container_service.get_service_status(
+                        dependency_name)
                 service_status['dependencies'] = dependency_status
             result[service_name] = service_status
         return result
@@ -87,12 +91,15 @@ class Services:
     def check_all_dependents_ready(self, service_name: str) -> bool:
         service = self.compose_file['services'][service_name]
         if Services.is_exec_service(service):
-            raise Exception("trying to check dependencies for a exec container.")
+            raise Exception(
+                "trying to check dependencies for a exec container.")
         if 'depends_on' not in service:
-            raise Exception("trying to check dependencies service without dependencies.")
+            raise Exception(
+                "trying to check dependencies service without dependencies.")
         all_true = True
         for dependency_name in service['depends_on']:
-            all_true = all_true and (self.container_service.get_service_status(dependency_name) == ServiceStatus.READY)
+            all_true = all_true and (self.container_service.get_service_status(
+                dependency_name) == ServiceStatus.READY)
         return all_true
 
     def get_services_ready_to_start(self) -> list[str] | None:
@@ -100,8 +107,9 @@ class Services:
         services_status = self.get_services_status()
 
         all_started = True
-        for service_name in services_status:
-            all_started = all_started and (services_status[service_name]['status'] == ServiceStatus.READY)
+        for service in services_status.values():
+            all_started = all_started and (
+                service['status'] == ServiceStatus.READY)
 
         if all_started:
             return None
@@ -119,7 +127,8 @@ class Services:
     def start_all_available_services(self, until: str = None) -> bool:
 
         service_status = self.get_services_status()
-        if until is not None and until in service_status and service_status[until]['status'] == ServiceStatus.READY:
+        if until is not None and until in service_status and service_status[
+                until]['status'] == ServiceStatus.READY:
             return False
 
         services = self.get_services_ready_to_start()
@@ -149,21 +158,31 @@ class Services:
     def start(self, verification_step_millis: int, presentation_step_millis: int,
               presentation: Callable[[list[str]], None], until: str = None) -> int:
 
-        presentation(Services.transform_status_to_log(self.get_services_status()))
+        presentation(
+            Services.transform_status_to_log(
+                self.get_services_status()))
         last_presentation = time.time()
         while True:
             last_verification = time.time()
             if not self.start_all_available_services(until):
-                presentation(Services.transform_status_to_log(self.get_services_status()))
+                presentation(
+                    Services.transform_status_to_log(
+                        self.get_services_status()))
                 break
-            if (time.time() - last_presentation) * 1_000 > presentation_step_millis:
-                presentation(Services.transform_status_to_log(self.get_services_status()))
+            if (time.time() - last_presentation) * \
+                    1_000 > presentation_step_millis:
+                presentation(
+                    Services.transform_status_to_log(
+                        self.get_services_status()))
                 last_presentation = time.time()
-            if (time.time() - last_verification) * 1_000 < verification_step_millis:
+            if (time.time() - last_verification) * \
+                    1_000 < verification_step_millis:
                 time.sleep(verification_step_millis // 1_000)
 
     def show_status(self, presentation: Callable[[list[str]], None]):
-        presentation(Services.transform_status_to_log(self.get_services_status()))
+        presentation(
+            Services.transform_status_to_log(
+                self.get_services_status()))
 
     def run_exec_container(self) -> int:
         return self.container_service.run_exec_container()
@@ -176,6 +195,7 @@ class ContainerService(BaseContainerService):
         self.compose_file_path = compose_file_path
         self.compose_file = yaml.safe_load(compose_file_path.read_text())
         self.environment = kwargs.get('environment', dict(os.environ))
+        self.compose_file_path_host = kwargs.get('compose_file_path_host', compose_file_path)
         if 'readiness_check' in kwargs:
             self.readiness_check = kwargs.get('readiness_check')
         else:
@@ -189,9 +209,11 @@ class ContainerService(BaseContainerService):
             if container.attrs['NetworkSettings']['IPAddress'].strip():
                 return container.attrs['NetworkSettings']['IPAddress']
         if len(container.attrs['NetworkSettings']['Networks'].keys()) > 0:
-            first_network = list(container.attrs['NetworkSettings']['Networks'].keys())[0]
+            first_network = list(
+                container.attrs['NetworkSettings']['Networks'].keys())[0]
             return container.attrs['NetworkSettings']['Networks'][first_network]['IPAddress']
-        raise Exception(f'Could not find Ip for container {container.attrs["Name"]}')
+        raise Exception(
+            f'Could not find Ip for container {container.attrs["Name"]}')
 
     def get_service_status(self, service_name: str) -> ServiceStatus:
         try:
@@ -199,12 +221,11 @@ class ContainerService(BaseContainerService):
             if container.status == 'exited':
                 return ServiceStatus.NOT_STARTED
             if container.status in ['created', 'running', 'restarting']:
-                if self.readiness_check.is_ready(service_name,self._get_container_ip(container)):
+                if self.readiness_check.is_ready(
+                        service_name, self._get_container_ip(container)):
                     return ServiceStatus.READY
-                else:
-                    return ServiceStatus.NOT_READY
-            else:
-                return ServiceStatus.INVALID
+                return ServiceStatus.NOT_READY
+            return ServiceStatus.INVALID
         except NotFound:
             return ServiceStatus.NOT_STARTED
 
@@ -213,7 +234,7 @@ class ContainerService(BaseContainerService):
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml up -d {service_name}',
             volumes={
-                str(self.compose_file_path.absolute()): {
+                str(self.compose_file_path_host.absolute()): {
                     'bind': '/opt/docker-compose.yml',
                     'mode': 'ro'
                 },
@@ -239,7 +260,7 @@ class ContainerService(BaseContainerService):
                 'docker/compose:alpine-1.29.2',
                 f'-f /opt/docker-compose.yml up -d {service_name}',
                 volumes={
-                    str(self.compose_file_path.absolute()): {
+                    str(self.compose_file_path_host.absolute()): {
                         'bind': '/opt/docker-compose.yml',
                         'mode': 'ro'
                     },
@@ -249,7 +270,8 @@ class ContainerService(BaseContainerService):
                 },
                 environment=self.environment
             )
-            return self.docker_client.containers.get(service_name).attrs['State']['ExitCode']
+            return self.docker_client.containers.get(
+                service_name).attrs['State']['ExitCode']
         finally:
             if container:
                 container.remove()
@@ -269,6 +291,7 @@ def check(config: dict) -> Tuple[bool, any]:
             connection = http.client.HTTPSConnection(
                 host=config['host'] if 'host' in config else config['service-ip'],
                 port=config['port'],
+                # pylint: disable=protected-access
                 context=ssl._create_unverified_context())
         else:
             connection = http.client.HTTPConnection(
@@ -289,6 +312,7 @@ def check(config: dict) -> Tuple[bool, any]:
                 return False, f'different json body: {diff.to_dict()}'
             return True, ''
         return False, 'different status'
+    # pylint: disable=broad-except
     except Exception as exc:
         return False, exc
     finally:
@@ -315,7 +339,8 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
 class TestContainer:
 
-    def __init__(self, compose_file_path: str, print_function: Callable[[str], None] = print):
+    def __init__(self, compose_file_path: str,
+                 print_function: Callable[[str], None] = print):
         path = Path(compose_file_path)
         self.services = Services(path, ContainerService(path))
         self.print_function = print_function
@@ -334,8 +359,13 @@ class TestContainer:
             self._print(line + " " * (self.max_line_size - len(line)))
         self.last_lines_showed = len(lines_to_show)
 
-    def start(self, verification_step_millis: int, presentation_step_millis: int, until: str = None):
-        self.services.start(verification_step_millis, presentation_step_millis, self._present_status, until)
+    def start(self, verification_step_millis: int,
+              presentation_step_millis: int, until: str = None):
+        self.services.start(
+            verification_step_millis,
+            presentation_step_millis,
+            self._present_status,
+            until)
 
     def show_status(self):
         self.services.show_status(self._present_status)

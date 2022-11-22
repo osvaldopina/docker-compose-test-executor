@@ -34,4 +34,4 @@ jobs:
         uses: actions/checkout@v2
       -
          name: Build and deploy container to docker hub
-         run: make push
+         run: make push_inside_container

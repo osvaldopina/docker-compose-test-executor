@@ -51,8 +51,6 @@ services:
     image:  python:3.9.15-alpine3.15
     container_name: exec-container
     volumes:
-      - ${VENV_PATH}:/opt/venv:ro
       - ${SCRIPT}:/opt/script.py
-    command: sh -c "source /opt/venv/bin/activate && python /opt/script.py"
+    command: sh -c "python /opt/script.py"
     x-exec-container:
-      max-wait-to-be-ready-seconds: 10

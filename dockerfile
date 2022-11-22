@@ -1,12 +1,11 @@
-FROM python:3.7.14-alpine3.16
+FROM python:3.10-alpine3.16
 
 WORKDIR /app
 
-RUN  apk update && apk add docker make curl && \
-     pip install pep8 docker deepdiff pylint autopep8
+RUN  apk update && apk add docker make curl
 
-COPY test_containers.py test_containers.py
-COPY test_containers_starter.py test_containers_starter.py  
+COPY src /opt/src
+RUN cd /opt/src && pip install . && rm -rf /opt/src
 
-CMD [ "python3", "-m" , "test_containers_starter"]
+ENTRYPOINT [ "dc-test-exec"]
     

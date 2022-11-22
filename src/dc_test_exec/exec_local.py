@@ -5,7 +5,8 @@ from pathlib import Path
 
 
 def main():
-    os.environ['HTTP_SERVER_VOLUME'] = os.path.join(Path(__file__).parent.parent, 'httpservervolume')
+    os.environ['HTTP_SERVER_VOLUME'] = os.path.join(
+        Path(__file__).parent.parent, 'httpservervolume')
 
     # test_container = TestContainer('../testsConfig/docker_compose_test_exec_script.yml')
     # dc_test_exec.start(1000, 1000)

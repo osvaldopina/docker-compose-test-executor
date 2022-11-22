@@ -1,6 +1,7 @@
 import click
 import docker_compose_test_executor
 
+
 @click.group()
 def cli():
     pass
@@ -22,7 +23,8 @@ def show_status(docker_compose_file_path):
 @click.command(name="start")
 @click.option('--file', '-f', metavar='<DOCKER_COMPOSE_FILE>', required=True,
               type=click.types.Path(file_okay=True, dir_okay=False), help="docker compose file")
-@click.option('--until', '-u', metavar='<SERVICE_NAME>', help="stop starting services when <SERVICE_NAME> is started")
+@click.option('--until', '-u', metavar='<SERVICE_NAME>',
+              help="stop starting services when <SERVICE_NAME> is started")
 def start(file, until):
     """start services and run exec container"""
     __print('start')

@@ -1,7 +1,0 @@
-services:
-  splunk:
-    image: "splunk/splunk"
-    container_name: splunk
-    environment:
-      - SPLUNK_START_ARGS=--accept-license
-      - SPLUNK_PASSWORD=admin
