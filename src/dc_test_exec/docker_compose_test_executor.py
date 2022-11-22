@@ -273,6 +273,9 @@ class ContainerService(BaseContainerService):
             return self.docker_client.containers.get(
                 service_name).attrs['State']['ExitCode']
         finally:
+            print('----------------------------------------')
+            print(str(type(container)))
+            print('----------------------------------------')
             if container:
                 container.remove()
 
