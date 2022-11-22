@@ -109,7 +109,7 @@ class Services:
         all_started = True
         for service in services_status.values():
             all_started = all_started and (
-                    service['status'] == ServiceStatus.READY)
+                service['status'] == ServiceStatus.READY)
 
         if all_started:
             return None
@@ -128,7 +128,7 @@ class Services:
 
         service_status = self.get_services_status()
         if until is not None and until in service_status and service_status[
-            until]['status'] == ServiceStatus.READY:
+                until]['status'] == ServiceStatus.READY:
             return False
 
         services = self.get_services_ready_to_start()

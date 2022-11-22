@@ -33,7 +33,10 @@ create_build_container:
 
 build: create_dev_env verify create_container
 
-push: build
+login_docker_hub: build_container
+	docker login -u $(PT_DOCKER_HUB_USER) -p $(PT_DOCKER_HUB_PASSWD)
+
+push: login_docker_hub build
 		docker push --all-tags osvaldopina/$(IMAGE_NAME)
 
 push_inside_container: create_build_container
@@ -42,5 +45,7 @@ push_inside_container: create_build_container
 			-v $(shell pwd):/opt/build/ \
 			-e HOST_PROJECT_HOME=$(shell pwd) \
 			-e HTTPSERVERVOLUME=$(shell pwd)/httpservervolume \
+			-e PT_DOCKER_HUB_USER=$(PT_DOCKER_HUB_USER) \
+			-e PT_DOCKER_HUB_PASSWD=$(PT_DOCKER_HUB_PASSWD) \
 			local-build-container \
 			sh -c "make push"
