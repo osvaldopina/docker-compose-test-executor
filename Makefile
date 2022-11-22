@@ -33,7 +33,7 @@ create_build_container:
 
 build: create_dev_env verify create_container
 
-login_docker_hub: build_container
+login_docker_hub:
 	docker login -u $(PT_DOCKER_HUB_USER) -p $(PT_DOCKER_HUB_PASSWD)
 
 push: login_docker_hub build
