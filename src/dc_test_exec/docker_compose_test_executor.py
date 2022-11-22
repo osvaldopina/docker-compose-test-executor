@@ -109,7 +109,7 @@ class Services:
         all_started = True
         for service in services_status.values():
             all_started = all_started and (
-                service['status'] == ServiceStatus.READY)
+                    service['status'] == ServiceStatus.READY)
 
         if all_started:
             return None
@@ -128,7 +128,7 @@ class Services:
 
         service_status = self.get_services_status()
         if until is not None and until in service_status and service_status[
-                until]['status'] == ServiceStatus.READY:
+            until]['status'] == ServiceStatus.READY:
             return False
 
         services = self.get_services_ready_to_start()
@@ -242,6 +242,7 @@ class ContainerService(BaseContainerService):
                     'bind': '/var/run/docker.sock'
                 }
             },
+            remove=True,
             environment=self.environment,
             detach=True
         )
@@ -253,31 +254,24 @@ class ContainerService(BaseContainerService):
         return None
 
     def run_exec_container(self, service_name: str):
-        container = None
 
-        try:
-            container = self.docker_client.containers.run(
-                'docker/compose:alpine-1.29.2',
-                f'-f /opt/docker-compose.yml up -d {service_name}',
-                volumes={
-                    str(self.compose_file_path_host.absolute()): {
-                        'bind': '/opt/docker-compose.yml',
-                        'mode': 'ro'
-                    },
-                    '/var/run/docker.sock': {
-                        'bind': '/var/run/docker.sock'
-                    }
+        self.docker_client.containers.run(
+            'docker/compose:alpine-1.29.2',
+            f'-f /opt/docker-compose.yml up -d {service_name}',
+            volumes={
+                str(self.compose_file_path_host.absolute()): {
+                    'bind': '/opt/docker-compose.yml',
+                    'mode': 'ro'
                 },
-                environment=self.environment
-            )
-            return self.docker_client.containers.get(
-                service_name).attrs['State']['ExitCode']
-        finally:
-            print('----------------------------------------')
-            print(str(type(container)))
-            print('----------------------------------------')
-            if container:
-                container.remove()
+                '/var/run/docker.sock': {
+                    'bind': '/var/run/docker.sock'
+                }
+            },
+            remove=True,
+            environment=self.environment
+        )
+        return self.docker_client.containers.get(
+            service_name).attrs['State']['ExitCode']
 
     def _stop_service(self, service_name: str) -> None:
         try:
