@@ -19,6 +19,8 @@ services:
         json-body:
           code: 2
           message: ready 2 message
+    networks:
+      - default
 
   service-b:
     image: "nginx:latest"
@@ -43,6 +45,8 @@ services:
           message: ready 2 message
     depends_on:
       - service-a
+    networks:
+      - default
 
   exec-container:
     image: busybox:latest
@@ -52,3 +56,8 @@ services:
     command: sh -c "exit $${EXEC_CONTAINER_EXIT_CODE}"
     x-exec-container:
       max-wait-to-be-ready-seconds: 10
+    networks:
+      - default
+
+networks:
+  default:

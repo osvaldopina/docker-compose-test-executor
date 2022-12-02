@@ -12,20 +12,20 @@ from dc_test_exec.docker_compose_test_executor import ServiceStatus, BaseContain
     HttpReadinessCheck, Services
 
 docker_compose_test_exec_container_path = \
-    Path(os.path.join(Path(__file__).parent, '../../testsConfig/docker_compose_test_exec_container.yml'))
+    Path(os.path.join(Path(__file__).parent, 'resources/docker_compose_test_exec_container.yml'))
 docker_compose_test_exec_container_script_path = \
-    Path(os.path.join(Path(__file__).parent, '../../testsConfig/docker_compose_test_exec_script.yml'))
+    Path(os.path.join(Path(__file__).parent, 'resources/docker_compose_test_exec_script.yml'))
 
 if 'HOST_PROJECT_HOME' in os.environ:
     docker_compose_test_exec_container_path_host = \
-        Path(os.environ['HOST_PROJECT_HOME'], 'testsConfig/docker_compose_test_exec_container.yml')
+        Path(os.environ['HOST_PROJECT_HOME'], 'tests/resources/docker_compose_test_exec_container.yml')
     docker_compose_test_exec_container_script_path_host = \
-        Path(os.environ['HOST_PROJECT_HOME'], 'testsConfig/docker_compose_test_exec_script.yml')
+        Path(os.environ['HOST_PROJECT_HOME'], 'tests/resources/docker_compose_test_exec_script.yml')
 else:
     docker_compose_test_exec_container_path_host = \
-        Path(os.path.join(Path(__file__).parent, '../../testsConfig/docker_compose_test_exec_container.yml'))
+        Path(os.path.join(Path(__file__).parent, 'resources/docker_compose_test_exec_container.yml'))
     docker_compose_test_exec_container_script_path_host = \
-        Path(os.path.join(Path(__file__).parent, '../../testsConfig/docker_compose_test_exec_script.yml'))
+        Path(os.path.join(Path(__file__).parent, 'resources/docker_compose_test_exec_script.yml'))
 
 
 class MockContainerService(BaseContainerService):
@@ -355,18 +355,17 @@ class ContainerServiceTestCase(unittest.TestCase):
             docker_compose_test_exec_container_path,
             compose_file_path_host=docker_compose_test_exec_container_path_host)
 
-        self.assertEqual(12, container_service.run_exec_container('exec-container'))
+        self.assertEqual(12, container_service.run_exec_container())
 
     def test_run_exec_container_script(self):
         container_service = ContainerService(
             docker_compose_test_exec_container_script_path,
             compose_file_path_host=docker_compose_test_exec_container_script_path_host,
             environment={
-                'SCRIPT': os.path.join(docker_compose_test_exec_container_script_path_host.parent.parent, 'testsConfig',
-                                       'execScriptTest.py'),
+                'SCRIPT': os.path.join(docker_compose_test_exec_container_script_path_host.parent,'execScriptTest.py'),
             })
 
-        self.assertEqual(22, container_service.run_exec_container('exec-container'))
+        self.assertEqual(22, container_service.run_exec_container())
 
     def test_restart(self):
 

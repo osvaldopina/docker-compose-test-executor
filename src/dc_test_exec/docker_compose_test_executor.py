@@ -2,6 +2,7 @@ import http
 import json
 import os
 import ssl
+import sys
 import time
 from enum import Enum
 from typing import Tuple, Callable
@@ -29,7 +30,10 @@ class BaseContainerService:
     def start_service(self, service_name: str) -> None:
         pass
 
-    def run_exec_container(self, service_name: str) -> int:
+    def run_exec_container(self) -> int:
+        pass
+
+    def restart(self, service_name:str) -> None:
         pass
 
 
@@ -179,13 +183,19 @@ class Services:
                     1_000 < verification_step_millis:
                 time.sleep(verification_step_millis // 1_000)
 
-    def show_status(self, presentation: Callable[[list[str]], None]):
+    def run_exec_container(self) -> int:
+        return self.container_service.run_exec_container()
+
+    def status(self, presentation: Callable[[list[str]], None]):
         presentation(
             Services.transform_status_to_log(
                 self.get_services_status()))
 
     def run_exec_container(self) -> int:
         return self.container_service.run_exec_container()
+
+    def restart(self, service_name):
+        self.container_service.restart(service_name)
 
 
 class ContainerService(BaseContainerService):
@@ -242,10 +252,20 @@ class ContainerService(BaseContainerService):
                     'bind': '/var/run/docker.sock'
                 }
             },
-            remove=True,
+            # remove=True,
             environment=self.environment,
             detach=True
         )
+
+    def restart(self, service_name: str) -> (None | str):
+        try:
+            container = self.docker_client.containers.get(service_name)
+            container.stop()
+            container.remove(force=True)
+            self.start_service(service_name)
+            return None
+        except NotFound:
+            return f'serice {service_name} not found!'
 
     def _get_exec_container_name(self) -> str | None:
         for service_name in self.compose_file['services']:
@@ -253,11 +273,11 @@ class ContainerService(BaseContainerService):
                 return service_name
         return None
 
-    def run_exec_container(self, service_name: str):
+    def run_exec_container(self) -> int:
 
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml up -d {service_name}',
+            f'-f /opt/docker-compose.yml up -d {self._get_exec_container_name()}',
             volumes={
                 str(self.compose_file_path_host.absolute()): {
                     'bind': '/opt/docker-compose.yml',
@@ -270,8 +290,7 @@ class ContainerService(BaseContainerService):
             remove=True,
             environment=self.environment
         )
-        return self.docker_client.containers.get(
-            service_name).attrs['State']['ExitCode']
+        return self.docker_client.containers.get(self._get_exec_container_name()).attrs['State']['ExitCode']
 
     def _stop_service(self, service_name: str) -> None:
         try:
@@ -336,16 +355,18 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
 class TestContainer:
 
-    def __init__(self, compose_file_path: str,
-                 print_function: Callable[[str], None] = print):
+    def __init__(self, compose_file_path: str, environment: dict, silent: bool, print_function: Callable[[str], None]):
+
         path = Path(compose_file_path)
-        self.services = Services(path, ContainerService(path))
+        self.services = Services(path, ContainerService(path, environment=environment))
         self.print_function = print_function
         self.last_lines_showed = 0
         self.max_line_size = 0
+        self.silent = silent
 
     def _print(self, line: str):
-        self.print_function(line)
+        if not self.silent:
+            self.print_function(line)
 
     def _present_status(self, lines_to_show: list[str]):
         if self.last_lines_showed > 0:
@@ -357,12 +378,23 @@ class TestContainer:
         self.last_lines_showed = len(lines_to_show)
 
     def start(self, verification_step_millis: int,
-              presentation_step_millis: int, until: str = None):
+              presentation_step_millis: int,run_exec_container: bool, until: str = None):
         self.services.start(
             verification_step_millis,
             presentation_step_millis,
             self._present_status,
             until)
 
-    def show_status(self):
-        self.services.show_status(self._present_status)
+        if run_exec_container:
+            self.run_exec_container()
+
+    def status(self):
+        self.services.status(self._present_status)
+
+    def restart(self, service_name: str):
+        self.services.restart(service_name)
+
+    def run_exec_container(self):
+        exit_code = self.services.run_exec_container()
+        self._print(f'exec-container exit code ({exit_code})')
+        sys.exit(exit_code)
