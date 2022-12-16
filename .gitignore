@@ -26,3 +26,6 @@ Thumbs.db
 src/build/
 src/*.egg-info/
 src/dc_test_exec/_trial_temp/
+
+dist/
+build/

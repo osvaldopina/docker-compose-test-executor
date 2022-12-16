@@ -8,4 +8,3 @@ COPY src /opt/src
 RUN cd /opt/src && pip install . && rm -rf /opt/src
 
 ENTRYPOINT [ "dc-test-exec"]
-    

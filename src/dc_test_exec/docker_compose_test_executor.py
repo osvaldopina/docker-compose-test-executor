@@ -20,6 +20,8 @@ class ServiceStatus(Enum):
     NOT_STARTED = 2
     NOT_READY = 3
     READY = 4
+    EXECUTED_SUCCESSFULLY = 5
+    EXECUTED_ERROR = 6
 
 
 class BaseContainerService:
@@ -33,7 +35,10 @@ class BaseContainerService:
     def run_exec_container(self) -> int:
         pass
 
-    def restart(self, service_name:str) -> None:
+    def restart(self, service_name: str) -> None:
+        pass
+
+    def run_one_shot_service(self, one_shot_service_name):
         pass
 
 
@@ -62,8 +67,7 @@ class Services:
             if 'depends_on' in service:
                 dependency_status = {}
                 for dependency_name in service['depends_on']:
-                    dependency_status[dependency_name] = self.container_service.get_service_status(
-                        dependency_name)
+                    dependency_status[dependency_name] = self.container_service.get_service_status(dependency_name)
                 service_status['dependencies'] = dependency_status
             result[service_name] = service_status
         return result
@@ -98,13 +102,14 @@ class Services:
             raise Exception(
                 "trying to check dependencies for a exec container.")
         if 'depends_on' not in service:
-            raise Exception(
-                "trying to check dependencies service without dependencies.")
-        all_true = True
+            raise Exception("trying to check dependencies service without dependencies.")
+
         for dependency_name in service['depends_on']:
-            all_true = all_true and (self.container_service.get_service_status(
-                dependency_name) == ServiceStatus.READY)
-        return all_true
+            if self.container_service.get_service_status(dependency_name) not in \
+                    [ServiceStatus.READY, ServiceStatus.EXECUTED_SUCCESSFULLY]:
+                return False
+
+        return True
 
     def get_services_ready_to_start(self) -> list[str] | None:
         result = []
@@ -113,13 +118,16 @@ class Services:
         all_started = True
         for service in services_status.values():
             all_started = all_started and (
-                service['status'] == ServiceStatus.READY)
+                    service['status'] == ServiceStatus.READY or
+                    service['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
+                    service['status'] == ServiceStatus.EXECUTED_ERROR)
 
         if all_started:
             return None
 
         for service_name in self.get_services_with_dependency():
-            if self.check_all_dependents_ready(service_name):
+            if services_status[service_name]['status'] == ServiceStatus.NOT_STARTED and \
+                    self.check_all_dependents_ready(service_name):
                 result.append(service_name)
 
         for service_name in self.get_services_without_dependency():
@@ -131,8 +139,10 @@ class Services:
     def start_all_available_services(self, until: str = None) -> bool:
 
         service_status = self.get_services_status()
-        if until is not None and until in service_status and service_status[
-                until]['status'] == ServiceStatus.READY:
+        if until is not None and until in service_status and \
+                (service_status[until]['status'] == ServiceStatus.READY or
+                 service_status[until]['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
+                 service_status[until]['status'] == ServiceStatus.EXECUTED_ERROR):
             return False
 
         services = self.get_services_ready_to_start()
@@ -182,6 +192,9 @@ class Services:
             if (time.time() - last_verification) * \
                     1_000 < verification_step_millis:
                 time.sleep(verification_step_millis // 1_000)
+        presentation(
+            Services.transform_status_to_log(
+                self.get_services_status()))
 
     def run_exec_container(self) -> int:
         return self.container_service.run_exec_container()
@@ -194,8 +207,11 @@ class Services:
     def run_exec_container(self) -> int:
         return self.container_service.run_exec_container()
 
-    def restart(self, service_name):
-        self.container_service.restart(service_name)
+    def restart(self, service_name) -> str:
+        return self.container_service.restart(service_name)
+
+    def run_one_shot_service(self, one_shot_service_name) -> int:
+        return self.container_service.run_one_shot_service(one_shot_service_name)
 
 
 class ContainerService(BaseContainerService):
@@ -204,7 +220,7 @@ class ContainerService(BaseContainerService):
         self.docker_client = docker.from_env()
         self.compose_file_path = compose_file_path
         self.compose_file = yaml.safe_load(compose_file_path.read_text())
-        self.environment = kwargs.get('environment', dict(os.environ))
+        self.environment = kwargs.get('environment', {})
         self.compose_file_path_host = kwargs.get('compose_file_path_host', compose_file_path)
         if 'readiness_check' in kwargs:
             self.readiness_check = kwargs.get('readiness_check')
@@ -229,10 +245,13 @@ class ContainerService(BaseContainerService):
         try:
             container = self.docker_client.containers.get(service_name)
             if container.status == 'exited':
+                if 'x-one-shot' in self.compose_file['services'][service_name]:
+                    if container.attrs['State']['ExitCode'] == 0:
+                        return ServiceStatus.EXECUTED_SUCCESSFULLY
+                    return ServiceStatus.EXECUTED_ERROR
                 return ServiceStatus.NOT_STARTED
-            if container.status in ['created', 'running', 'restarting']:
-                if self.readiness_check.is_ready(
-                        service_name, self._get_container_ip(container)):
+            if container.status in ['running']:
+                if self.readiness_check.is_ready(service_name, self._get_container_ip(container)):
                     return ServiceStatus.READY
                 return ServiceStatus.NOT_READY
             return ServiceStatus.INVALID
@@ -299,6 +318,24 @@ class ContainerService(BaseContainerService):
         except NotFound:
             pass
 
+    def run_one_shot_service(self, one_shot_service_name) -> int:
+        self.docker_client.containers.run(
+            'docker/compose:alpine-1.29.2',
+            f'-f /opt/docker-compose.yml up -d {one_shot_service_name}',
+            volumes={
+                str(self.compose_file_path_host.absolute()): {
+                    'bind': '/opt/docker-compose.yml',
+                    'mode': 'ro'
+                },
+                '/var/run/docker.sock': {
+                    'bind': '/var/run/docker.sock'
+                }
+            },
+            remove=True,
+            environment=self.environment
+        )
+        return self.docker_client.containers.get(one_shot_service_name).attrs['State']['ExitCode']
+
 
 def check(config: dict) -> Tuple[bool, any]:
     connection = None
@@ -320,9 +357,8 @@ def check(config: dict) -> Tuple[bool, any]:
         response = connection.getresponse()
         if response.status == config['response-status']:
             if 'json-body' in config:
-                expected_json_body = json.loads(config['json-body'])
                 actual_json_body = json.loads(response.read())
-                diff = deepdiff.DeepDiff(expected_json_body, actual_json_body)
+                diff = deepdiff.DeepDiff(config['json-body'], actual_json_body)
                 if not diff.to_dict():
                     return True, ''
                 return False, f'different json body: {diff.to_dict()}'
@@ -348,7 +384,7 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
         for config in self.compose_file['services'][service_name]['x-http-readiness-checks']:
             config['service-ip'] = service_ip
-            all_true = all_true and self.check_function(config)
+            all_true = all_true and self.check_function(config)[0]
 
         return all_true
 
@@ -378,7 +414,7 @@ class TestContainer:
         self.last_lines_showed = len(lines_to_show)
 
     def start(self, verification_step_millis: int,
-              presentation_step_millis: int,run_exec_container: bool, until: str = None):
+              presentation_step_millis: int, run_exec_container: bool, until: str = None):
         self.services.start(
             verification_step_millis,
             presentation_step_millis,
@@ -392,9 +428,23 @@ class TestContainer:
         self.services.status(self._present_status)
 
     def restart(self, service_name: str):
-        self.services.restart(service_name)
+        message = self.services.restart(service_name)
+        if message:
+            self._print(message)
+            sys.exit(1)
+
+    def run(self, one_shot_service_name: str):
+        message = self.services.run_one_shot_service(one_shot_service_name)
+        if message:
+            self._print(message)
+            sys.exit(1)
 
     def run_exec_container(self):
         exit_code = self.services.run_exec_container()
         self._print(f'exec-container exit code ({exit_code})')
+        sys.exit(exit_code)
+
+    def run_one_shot_service(self, one_shot_service_name):
+        exit_code = self.services.run_one_shot_service(one_shot_service_name)
+        self._print(f'one-shot-exec exit code ({exit_code})')
         sys.exit(exit_code)

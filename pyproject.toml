@@ -1,14 +1,16 @@
 [build-system]
-requires = ["setuptools>=59.6"]
+requires = ["setuptools>=59.6", "wheel>=0.37"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "dc_test_exec"
-version = "1.0.0"
+version = "0.0.6"
+
+license = { text = "MIT" }
 authors = [
-  { name="Osvaldo Pina", email="osvaldo.pina@gmail.com" },
+    { name = "Osvaldo Pina", email = "osvaldo.pina@gmail.com" },
 ]
-description = "A small example package"
+description = "Tool to run tests using docker compose"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
@@ -16,6 +18,8 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+[project.scripts]
+dc-test-exec = "dc_test_exec.main:cli"
 
 [project.urls]
 "Homepage" = "https://github.com/osvaldopina/docker-compose-test-executor"
