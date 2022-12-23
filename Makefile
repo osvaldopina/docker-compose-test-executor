@@ -11,7 +11,7 @@ create_venv:
 
 create_dev_env:
 		pip install pip pep8 docker deepdiff pylint autopep8 deepdiff docker pyyaml click build twine
-		cd src && pip install .
+#		cd src && pip install .
 
 .PHONY: lint
 lint:
@@ -39,15 +39,11 @@ login_docker_hub:
 push_docker_container: login_docker_hub build
 		docker push --all-tags osvaldopina/$(IMAGE_NAME)
 
+#push_python_module:
+#		python -m build
+#		python3 -m twine upload --repository testpypi -u  __token__ -p $(PT_PYPI_TOKEN) dist/*
 
-push_python_module:
-		python -m build
-		python3 -m twine upload --repository testpypi -u  __token__ -p $(PT_PYPI_TOKEN) dist/*
-
-
-
-
-push: push_docker_container push_python_module
+push: push_docker_container
 
 push_inside_container: create_build_container
 		docker run -t \

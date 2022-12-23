@@ -1,6 +1,5 @@
 import http
 import json
-import os
 import ssl
 import sys
 import time
@@ -118,9 +117,9 @@ class Services:
         all_started = True
         for service in services_status.values():
             all_started = all_started and (
-                    service['status'] == ServiceStatus.READY or
-                    service['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
-                    service['status'] == ServiceStatus.EXECUTED_ERROR)
+                service['status'] == ServiceStatus.READY or
+                service['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
+                service['status'] == ServiceStatus.EXECUTED_ERROR)
 
         if all_started:
             return None
@@ -204,14 +203,30 @@ class Services:
             Services.transform_status_to_log(
                 self.get_services_status()))
 
-    def run_exec_container(self) -> int:
-        return self.container_service.run_exec_container()
-
     def restart(self, service_name) -> str:
         return self.container_service.restart(service_name)
 
     def run_one_shot_service(self, one_shot_service_name) -> int:
         return self.container_service.run_one_shot_service(one_shot_service_name)
+
+    def clear(self, services, unless):
+
+        if services:
+            for service in services:
+                self.container_service.clear(service)
+            return
+
+        if unless:
+            for service in self.compose_file['services']:
+                if service not in unless:
+                    self.container_service.clear(service)
+            return
+
+        for service in self.compose_file['services']:
+            self.container_service.clear(service)
+
+    def clear_all(self):
+        return self.container_service.clear_all()
 
 
 class ContainerService(BaseContainerService):
@@ -241,7 +256,9 @@ class ContainerService(BaseContainerService):
         raise Exception(
             f'Could not find Ip for container {container.attrs["Name"]}')
 
+    # pylint: disable=too-many-return-statements
     def get_service_status(self, service_name: str) -> ServiceStatus:
+
         try:
             container = self.docker_client.containers.get(service_name)
             if container.status == 'exited':
@@ -258,23 +275,39 @@ class ContainerService(BaseContainerService):
         except NotFound:
             return ServiceStatus.NOT_STARTED
 
+    def get_services_ips(self):
+        result = {}
+        for service_name in self.compose_file['services']:
+            try:
+                container = self.docker_client.containers.get(f'{service_name}')
+                result[service_name.upper() + '_IP'] = self._get_container_ip(container)
+            except NotFound:
+                pass
+        return result
+
     def start_service(self, service_name: str) -> None:
-        self.docker_client.containers.run(
-            'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml up -d {service_name}',
-            volumes={
-                str(self.compose_file_path_host.absolute()): {
-                    'bind': '/opt/docker-compose.yml',
-                    'mode': 'ro'
+
+        try:
+            self.docker_client.containers.get(f'{service_name}_creator')
+            return
+        except NotFound:
+            self.docker_client.containers.run(
+                'docker/compose:alpine-1.29.2',
+                f'-f /opt/docker-compose.yml up {service_name}',
+                name=f'{service_name}_creator',
+                volumes={
+                    str(self.compose_file_path_host.absolute()): {
+                        'bind': '/opt/docker-compose.yml',
+                        'mode': 'ro'
+                    },
+                    '/var/run/docker.sock': {
+                        'bind': '/var/run/docker.sock'
+                    }
                 },
-                '/var/run/docker.sock': {
-                    'bind': '/var/run/docker.sock'
-                }
-            },
-            # remove=True,
-            environment=self.environment,
-            detach=True
-        )
+                remove=True,
+                environment=self.environment,
+                detach=True
+            )
 
     def restart(self, service_name: str) -> (None | str):
         try:
@@ -292,8 +325,25 @@ class ContainerService(BaseContainerService):
                 return service_name
         return None
 
-    def run_exec_container(self) -> int:
+    def environment_to_docker_env(self, env: dict):
+        result = ''
+        for env_key in env:
+            result += f'{env_key}={env[env_key]} '
 
+        return result
+
+    def run_exec_container(self) -> int:
+        try:
+            container = self.docker_client.containers.get(self._get_exec_container_name())
+            container.stop()
+            container.remove()
+        except NotFound:
+            pass
+
+        env = {**dict(self.environment), **dict(self.get_services_ips())}
+        env['ARGS'] = self.environment_to_docker_env(self.get_services_ips())
+        if 'EXTRA_ARGS' in env:
+            env['ARGS'] += env['ARGS'] + ' ' + env['EXTRA_ARGS']
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml up -d {self._get_exec_container_name()}',
@@ -306,10 +356,14 @@ class ContainerService(BaseContainerService):
                     'bind': '/var/run/docker.sock'
                 }
             },
-            remove=True,
-            environment=self.environment
+            environment=env
         )
-        return self.docker_client.containers.get(self._get_exec_container_name()).attrs['State']['ExitCode']
+        container = self.docker_client.containers.get(self._get_exec_container_name())
+        logs = container.logs(stream=True)
+        for log in logs:
+            print(log.decode('utf-8'), end='')
+        container.reload()
+        return container.attrs['State']['ExitCode']
 
     def _stop_service(self, service_name: str) -> None:
         try:
@@ -319,6 +373,15 @@ class ContainerService(BaseContainerService):
             pass
 
     def run_one_shot_service(self, one_shot_service_name) -> int:
+        try:
+            container = self.docker_client.containers.get(one_shot_service_name)
+            if container.status == 'exited':
+                return container.attrs['State']['ExitCode']
+            raise Exception(f'container for service {one_shot_service_name} is in invalid state '
+                            f'${container.attrs["State"]["ExitCode"]}')
+        except NotFound:
+            pass
+
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml up -d {one_shot_service_name}',
@@ -331,10 +394,32 @@ class ContainerService(BaseContainerService):
                     'bind': '/var/run/docker.sock'
                 }
             },
-            remove=True,
             environment=self.environment
         )
         return self.docker_client.containers.get(one_shot_service_name).attrs['State']['ExitCode']
+
+    def clear(self, service_name):
+        print(f'removing service {service_name}')
+        try:
+            container = self.docker_client.containers.get(service_name)
+            container.stop()
+            container.reload()
+            if container.status != 'removing':
+                container.remove()
+        except NotFound:
+            pass
+        try:
+            container = self.docker_client.containers.get(f'{service_name}_creator')
+            container.stop()
+            container.reload()
+            if container.status != 'removing':
+                container.remove()
+        except NotFound:
+            pass
+
+    def clear_all(self):
+        for service_name in self.compose_file['services']:
+            self.clear(service_name)
 
 
 def check(config: dict) -> Tuple[bool, any]:
@@ -413,13 +498,9 @@ class TestContainer:
             self._print(line + " " * (self.max_line_size - len(line)))
         self.last_lines_showed = len(lines_to_show)
 
-    def start(self, verification_step_millis: int,
-              presentation_step_millis: int, run_exec_container: bool, until: str = None):
-        self.services.start(
-            verification_step_millis,
-            presentation_step_millis,
-            self._present_status,
-            until)
+    def start(self, verification_step_millis: int, presentation_step_millis: int,
+              run_exec_container: bool, until: str = None):
+        self.services.start(verification_step_millis, presentation_step_millis, self._present_status, until)
 
         if run_exec_container:
             self.run_exec_container()
@@ -448,3 +529,9 @@ class TestContainer:
         exit_code = self.services.run_one_shot_service(one_shot_service_name)
         self._print(f'one-shot-exec exit code ({exit_code})')
         sys.exit(exit_code)
+
+    def clear(self, services, unless):
+        self.services.clear(services, unless)
+
+    def clear_all(self):
+        self.services.clear_all()

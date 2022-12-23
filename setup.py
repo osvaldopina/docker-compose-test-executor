@@ -14,7 +14,7 @@ setup(
             'dc-test-exec=dc_test_exec.main:cli'
         ]
     },
-    dependencies=[
+    install_requires=[
         'deepdiff>=6.2',
         'docker>=6.0',
         'pyyaml>=6.0',

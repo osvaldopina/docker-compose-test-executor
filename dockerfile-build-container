@@ -3,3 +3,5 @@ FROM python:3.10-alpine3.16
 WORKDIR /opt/build
 
 RUN  apk update && apk add docker make curl
+
+CMD sh
