@@ -1,11 +1,13 @@
 import http
 import json
+import os
 import ssl
 import sys
 import time
 from enum import Enum
 from typing import Tuple, Callable
 from pathlib import Path
+from os.path import exists
 
 import deepdiff
 import docker
@@ -268,6 +270,7 @@ class ContainerService(BaseContainerService):
                     return ServiceStatus.EXECUTED_ERROR
                 return ServiceStatus.NOT_STARTED
             if container.status in ['running']:
+                self.attach_network(container)
                 if self.readiness_check.is_ready(service_name, self._get_container_ip(container)):
                     return ServiceStatus.READY
                 return ServiceStatus.NOT_READY
@@ -382,7 +385,7 @@ class ContainerService(BaseContainerService):
         except NotFound:
             pass
 
-        self.docker_client.containers.run(
+        container = self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml up -d {one_shot_service_name}',
             volumes={
@@ -396,6 +399,11 @@ class ContainerService(BaseContainerService):
             },
             environment=self.environment
         )
+        print('   ************** logs ***************   ')
+        logs = container.logs(stream=True)
+        for log in logs:
+            print(log)
+        print('   *****************************   ')
         return self.docker_client.containers.get(one_shot_service_name).attrs['State']['ExitCode']
 
     def clear(self, service_name):
@@ -420,6 +428,16 @@ class ContainerService(BaseContainerService):
     def clear_all(self):
         for service_name in self.compose_file['services']:
             self.clear(service_name)
+
+    def attach_network(self, container):
+        if exists("/.dockerenv"):
+            current_container = self.docker_client.containers.get(os.uname().nodename)
+            if 'Networks' in container.attrs['NetworkSettings'] and len(
+                    container.attrs['NetworkSettings']['Networks'].keys()) == 1:
+                network_name = list(container.attrs['NetworkSettings']['Networks'].keys())[0]
+                if network_name not in list(current_container.attrs['NetworkSettings']['Networks']):
+                    network = self.docker_client.networks.get(network_name)
+                    network.connect(current_container)
 
 
 def check(config: dict) -> Tuple[bool, any]:
