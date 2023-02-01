@@ -307,7 +307,7 @@ class ContainerService(BaseContainerService):
                         'bind': '/var/run/docker.sock'
                     }
                 },
-                remove=True,
+                # remove=True,
                 environment=self.environment,
                 detach=True
             )
@@ -484,10 +484,10 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
     def is_ready(self, service_name: str, service_ip: str) -> bool:
         all_true = True
-
-        for config in self.compose_file['services'][service_name]['x-http-readiness-checks']:
-            config['service-ip'] = service_ip
-            all_true = all_true and self.check_function(config)[0]
+        if 'x-http-readiness-checks' in  self.compose_file['services'][service_name]:
+            for config in self.compose_file['services'][service_name]['x-http-readiness-checks']:
+                config['service-ip'] = service_ip
+                all_true = all_true and self.check_function(config)[0]
 
         return all_true
 
