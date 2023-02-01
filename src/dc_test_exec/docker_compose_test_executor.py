@@ -97,6 +97,7 @@ class Services:
                 result.append(service_name)
         return result
 
+    # pylint: disable=broad-exception-raised
     def check_all_dependents_ready(self, service_name: str) -> bool:
         service = self.compose_file['services'][service_name]
         if Services.is_exec_service(service):
@@ -247,6 +248,7 @@ class ContainerService(BaseContainerService):
     def __del__(self):
         self.docker_client.close()
 
+    # pylint: disable=broad-exception-raised
     def _get_container_ip(self, container):
         if 'IPAddress' in container.attrs['NetworkSettings']:
             if container.attrs['NetworkSettings']['IPAddress'].strip():
