@@ -54,7 +54,6 @@ class Services:
 
     def __init__(self, compose_file_path: Path,
                  container_service: BaseContainerService):
-        print('passei por aqui!')
         self.compose_file = yaml.safe_load(compose_file_path.read_text())
         self.container_service = container_service
 
@@ -236,7 +235,6 @@ class Services:
 class ContainerService(BaseContainerService):
 
     def __init__(self, compose_file_path: Path, **kwargs):
-        print('passei por aqui tb!')
         self.docker_client = docker.from_env()
         self.compose_file_path = compose_file_path
         self.compose_file = yaml.safe_load(compose_file_path.read_text())

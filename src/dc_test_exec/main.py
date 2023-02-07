@@ -51,7 +51,6 @@ def start(file, until, silent, environment):
 def run(file, silent, environment):
     """start services and run exec container"""
     env = {**dict(os.environ), **dict(environment)}
-    print(f'absoluto:{abspath(file)}')
     TestContainer(abspath(file), env, silent, click.echo).start(100, 1000, True)
 
 
