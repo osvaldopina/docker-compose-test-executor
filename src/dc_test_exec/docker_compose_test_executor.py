@@ -62,7 +62,7 @@ class Services:
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
             if self.is_exec_service(service_name):
-                break
+                continue
             service_status = {
                 'status': self.container_service.get_service_status(service_name)}
             if 'depends_on' in service:
