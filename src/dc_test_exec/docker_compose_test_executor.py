@@ -81,7 +81,7 @@ class Services:
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
             if self.is_exec_service(service_name):
-                break
+                continue
             if 'depends_on' not in service:
                 result.append(service_name)
         return result
@@ -91,7 +91,7 @@ class Services:
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
             if self.is_exec_service(service_name):
-                break
+                continue
             if 'depends_on' in service:
                 result.append(service_name)
         return result
