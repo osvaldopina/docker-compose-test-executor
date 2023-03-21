@@ -3,6 +3,7 @@
 
 # IDEs and editors
 /.idea
+.vscode
 .project
 *.launch
 .settings/

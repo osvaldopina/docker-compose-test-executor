@@ -61,7 +61,7 @@ class Services:
         result = {}
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
-            if self.is_exec_service(service):
+            if self.is_exec_service(service_name):
                 break
             service_status = {
                 'status': self.container_service.get_service_status(service_name)}
@@ -73,15 +73,14 @@ class Services:
             result[service_name] = service_status
         return result
 
-    @staticmethod
-    def is_exec_service(service_name: str) -> bool:
-        return 'x-exec-container' in service_name
+    def is_exec_service(self, service_name: str) -> bool:
+        return 'x-exec-container' in self.compose_file['services'][service_name]
 
     def get_services_without_dependency(self) -> list[str]:
         result = []
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
-            if Services.is_exec_service(service):
+            if self.is_exec_service(service_name):
                 break
             if 'depends_on' not in service:
                 result.append(service_name)
@@ -91,7 +90,7 @@ class Services:
         result = []
         for service_name in self.compose_file['services']:
             service = self.compose_file['services'][service_name]
-            if Services.is_exec_service(service):
+            if self.is_exec_service(service_name):
                 break
             if 'depends_on' in service:
                 result.append(service_name)
@@ -100,7 +99,7 @@ class Services:
     # pylint: disable=broad-exception-raised
     def check_all_dependents_ready(self, service_name: str) -> bool:
         service = self.compose_file['services'][service_name]
-        if Services.is_exec_service(service):
+        if self.is_exec_service(service_name):
             raise Exception(
                 "trying to check dependencies for a exec container.")
         if 'depends_on' not in service:
