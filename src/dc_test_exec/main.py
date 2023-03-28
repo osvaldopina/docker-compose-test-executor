@@ -34,11 +34,13 @@ def status(file):
               help="stop starting services when <SERVICE_NAME> is started")
 @click.option('--silent', '-s', is_flag=True)
 @click.option('--environment', '-e', metavar='<ENV_VAR_NAME> <ENV_VAR_VALUE>', type=(str, str), multiple=True,
-              help="stop starting services when <SERVICE_NAME> is started")
-def start(file, until, silent, environment):
+              help="sets a environment variables in format <ENV_VAR_NAME> <ENV_VAR_VALUE>.")
+@click.option('--env-file', '-ef', metavar='<ENVIRONMENT_FILE', type=click.types.Path(file_okay=True, dir_okay=False),
+              help="sets a environment file variables in format.")
+def start(file, until, silent, environment, env_file):
     """start services without running exec-container"""
     env = {**dict(os.environ), **dict(environment)}
-    TestContainer(abspath(file), env, silent, click.echo).start(100, 1000, False, until)
+    TestContainer(abspath(file), env, env_file, silent, click.echo).start(100, 1000, False, until)
 
 
 @click.command(name="run")
@@ -48,10 +50,12 @@ def start(file, until, silent, environment):
 @click.option('--silent', '-s', is_flag=True)
 @click.option('--environment', '-e', metavar='<ENV_VAR_NAME> <ENV_VAR_VALUE>', type=(str, str), multiple=True,
               help="stop starting services when <SERVICE_NAME> is started")
-def run(file, silent, environment):
+@click.option('--env-file', '-ef', metavar='<ENVIRONMENT_FILE', type=click.types.Path(file_okay=True, dir_okay=False),
+              help="sets a environment file variables in format.")
+def run(file, silent, environment, env_file):
     """start services and run exec container"""
     env = {**dict(os.environ), **dict(environment)}
-    TestContainer(abspath(file), env, silent, click.echo).start(100, 1000, True)
+    TestContainer(abspath(file), env, env_file, silent, click.echo).start(100, 1000, True)
 
 
 @click.command(name="restart")
@@ -61,10 +65,12 @@ def run(file, silent, environment):
               type=click.types.Path(file_okay=True, dir_okay=False), help="docker compose file")
 @click.option('--environment', '-e', metavar='<ENV_VAR_NAME> <ENV_VAR_VALUE>', type=(str, str), multiple=True,
               help="stop starting services when <SERVICE_NAME> is started")
-def restart(file, service, environment):
+@click.option('--env-file', '-ef', metavar='<ENVIRONMENT_FILE', type=click.types.Path(file_okay=True, dir_okay=False),
+              help="sets a environment file variables in format.")
+def restart(file, service, environment, env_file):
     """restart a specific service"""
     env = {**dict(os.environ), **dict(environment)}
-    TestContainer(abspath(file), env, False, click.echo).restart(service)
+    TestContainer(abspath(file), env, env_file, False, click.echo).restart(service)
 
 
 @click.command(name="exec-container")
@@ -74,10 +80,12 @@ def restart(file, service, environment):
 @click.option('--environment', '-e', metavar='<ENV_VAR_NAME> <ENV_VAR_VALUE>', type=(str, str), multiple=True,
               help="stop starting services when <SERVICE_NAME> is started")
 @click.option('--silent', '-s', is_flag=True)
-def run_exec_container(file, environment, silent):
+@click.option('--env-file', '-ef', metavar='<ENVIRONMENT_FILE', type=click.types.Path(file_okay=True, dir_okay=False),
+              help="sets a environment file variables in format.")
+def run_exec_container(file, environment, silent, env_file):
     """run exec container"""
     env = {**dict(os.environ), **dict(environment)}
-    TestContainer(abspath(file), env, silent, click.echo).run_exec_container()
+    TestContainer(abspath(file), env, env_file, silent, click.echo).run_exec_container()
 
 
 @click.command(name="one-shot")
@@ -89,10 +97,12 @@ def run_exec_container(file, environment, silent):
 @click.option('--service', '-s', metavar='<SERVICE_NAME>', required=True,
               type=click.types.Path(file_okay=True, dir_okay=False), help="docker compose file")
 @click.option('--silent', '-s', is_flag=True)
-def run_one_shot_service(file, environment, service, silent):
+@click.option('--env-file', '-ef', metavar='<ENVIRONMENT_FILE', type=click.types.Path(file_okay=True, dir_okay=False),
+              help="sets a environment file variables in format.")
+def run_one_shot_service(file, environment, service, silent, env_file):
     """run one shot service"""
     env = {**dict(os.environ), **dict(environment)}
-    TestContainer(abspath(file), env, silent, click.echo).run_one_shot_service(service)
+    TestContainer(abspath(file), env, env_file, silent, click.echo).run_one_shot_service(service)
 
 
 @click.command(name="clear")

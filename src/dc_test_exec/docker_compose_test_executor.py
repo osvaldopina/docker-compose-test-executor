@@ -119,9 +119,9 @@ class Services:
         all_started = True
         for service in services_status.values():
             all_started = all_started and (
-                service['status'] == ServiceStatus.READY or
-                service['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
-                service['status'] == ServiceStatus.EXECUTED_ERROR)
+                    service['status'] == ServiceStatus.READY or
+                    service['status'] == ServiceStatus.EXECUTED_SUCCESSFULLY or
+                    service['status'] == ServiceStatus.EXECUTED_ERROR)
 
         if all_started:
             return None
@@ -237,6 +237,7 @@ class ContainerService(BaseContainerService):
         self.docker_client = docker.from_env()
         self.compose_file_path = compose_file_path
         self.compose_file = yaml.safe_load(compose_file_path.read_text())
+        self.env_file = kwargs.get('env_file', None)
         self.environment = kwargs.get('environment', {})
         self.compose_file_path_host = kwargs.get('compose_file_path_host', compose_file_path)
         if 'readiness_check' in kwargs:
@@ -295,19 +296,31 @@ class ContainerService(BaseContainerService):
             self.docker_client.containers.get(f'{service_name}_creator')
             return
         except NotFound:
+            env = {**dict(self.environment), **dict(self.get_services_ips())}
+            env['ARGS'] = self.environment_to_docker_env(self.get_services_ips())
+            if 'EXTRA_ARGS' in env:
+                env['ARGS'] += env['ARGS'] + ' ' + env['EXTRA_ARGS']
+            env_file_cli = ''
+            volumes = {
+                str(self.compose_file_path_host.absolute()): {
+                    'bind': '/opt/docker-compose.yml',
+                    'mode': 'ro'
+                },
+                '/var/run/docker.sock': {
+                    'bind': '/var/run/docker.sock'
+                }
+            }
+            if self.env_file:
+                volumes[self.env_file] = {
+                    'bind': '/opt/env',
+                    'mode': 'ro'
+                }
+                env_file_cli = f'--env-file=/opt/env'
             self.docker_client.containers.run(
                 'docker/compose:alpine-1.29.2',
-                f'-f /opt/docker-compose.yml up {service_name}',
+                f'-f /opt/docker-compose.yml {env_file_cli} up {service_name}',
                 name=f'{service_name}_creator',
-                volumes={
-                    str(self.compose_file_path_host.absolute()): {
-                        'bind': '/opt/docker-compose.yml',
-                        'mode': 'ro'
-                    },
-                    '/var/run/docker.sock': {
-                        'bind': '/var/run/docker.sock'
-                    }
-                },
+                volumes=volumes,
                 # remove=True,
                 environment=self.environment,
                 detach=True
@@ -343,23 +356,30 @@ class ContainerService(BaseContainerService):
             container.remove()
         except NotFound:
             pass
-
         env = {**dict(self.environment), **dict(self.get_services_ips())}
         env['ARGS'] = self.environment_to_docker_env(self.get_services_ips())
         if 'EXTRA_ARGS' in env:
             env['ARGS'] += env['ARGS'] + ' ' + env['EXTRA_ARGS']
+        env_file_cli = ''
+        volumes = {
+            str(self.compose_file_path_host.absolute()): {
+                'bind': '/opt/docker-compose.yml',
+                'mode': 'ro'
+            },
+            '/var/run/docker.sock': {
+                'bind': '/var/run/docker.sock'
+            }
+        }
+        if self.env_file:
+            volumes[self.env_file] = {
+                'bind': '/opt/env',
+                'mode': 'ro'
+            }
+            env_file_cli = f'--env-file=/opt/env'
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml up -d {self._get_exec_container_name()}',
-            volumes={
-                str(self.compose_file_path_host.absolute()): {
-                    'bind': '/opt/docker-compose.yml',
-                    'mode': 'ro'
-                },
-                '/var/run/docker.sock': {
-                    'bind': '/var/run/docker.sock'
-                }
-            },
+            f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
+            volumes=volumes,
             environment=env
         )
         container = self.docker_client.containers.get(self._get_exec_container_name())
@@ -385,20 +405,31 @@ class ContainerService(BaseContainerService):
                             f'${container.attrs["State"]["ExitCode"]}')
         except NotFound:
             pass
-
-        container = self.docker_client.containers.run(
-            'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml up -d {one_shot_service_name}',
-            volumes={
-                str(self.compose_file_path_host.absolute()): {
-                    'bind': '/opt/docker-compose.yml',
-                    'mode': 'ro'
-                },
-                '/var/run/docker.sock': {
-                    'bind': '/var/run/docker.sock'
-                }
+        env = {**dict(self.environment), **dict(self.get_services_ips())}
+        env['ARGS'] = self.environment_to_docker_env(self.get_services_ips())
+        if 'EXTRA_ARGS' in env:
+            env['ARGS'] += env['ARGS'] + ' ' + env['EXTRA_ARGS']
+        env_file_cli = ''
+        volumes = {
+            str(self.compose_file_path_host.absolute()): {
+                'bind': '/opt/docker-compose.yml',
+                'mode': 'ro'
             },
-            environment=self.environment
+            '/var/run/docker.sock': {
+                'bind': '/var/run/docker.sock'
+            }
+        }
+        if self.env_file:
+            volumes[self.env_file] = {
+                'bind': '/opt/env',
+                'mode': 'ro'
+            }
+            env_file_cli = f'--env-file=/opt/env'
+        self.docker_client.containers.run(
+            'docker/compose:alpine-1.29.2',
+            f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
+            volumes=volumes,
+            environment=env
         )
         print('   ************** logs ***************   ')
         logs = container.logs(stream=True)
@@ -497,10 +528,12 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
 class TestContainer:
 
-    def __init__(self, compose_file_path: str, environment: dict, silent: bool, print_function: Callable[[str], None]):
+    def __init__(self, compose_file_path: str, environment: dict, env_file: str, silent: bool,
+                 print_function: Callable[[str], None]):
 
         path = Path(compose_file_path)
-        self.services = Services(path, ContainerService(path, environment=environment))
+        self.env_file = env_file
+        self.services = Services(path, ContainerService(path, environment=environment, env_file=env_file))
         self.print_function = print_function
         self.last_lines_showed = 0
         self.max_line_size = 0
