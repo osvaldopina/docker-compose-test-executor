@@ -315,7 +315,7 @@ class ContainerService(BaseContainerService):
                     'bind': '/opt/env',
                     'mode': 'ro'
                 }
-                env_file_cli = f'--env-file=/opt/env'
+                env_file_cli = '--env-file=/opt/env'
             self.docker_client.containers.run(
                 'docker/compose:alpine-1.29.2',
                 f'-f /opt/docker-compose.yml {env_file_cli} up {service_name}',
@@ -375,7 +375,7 @@ class ContainerService(BaseContainerService):
                 'bind': '/opt/env',
                 'mode': 'ro'
             }
-            env_file_cli = f'--env-file=/opt/env'
+            env_file_cli = '--env-file=/opt/env'
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
@@ -424,7 +424,7 @@ class ContainerService(BaseContainerService):
                 'bind': '/opt/env',
                 'mode': 'ro'
             }
-            env_file_cli = f'--env-file=/opt/env'
+            env_file_cli = '--env-file=/opt/env'
         self.docker_client.containers.run(
             'docker/compose:alpine-1.29.2',
             f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
@@ -528,6 +528,7 @@ class HttpReadinessCheck(BaseReadinessCheck):
 
 class TestContainer:
 
+    # pylint: disable=too-many-arguments
     def __init__(self, compose_file_path: str, environment: dict, env_file: str, silent: bool,
                  print_function: Callable[[str], None]):
 
