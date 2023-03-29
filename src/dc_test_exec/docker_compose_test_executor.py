@@ -317,8 +317,8 @@ class ContainerService(BaseContainerService):
                 }
                 env_file_cli = '--env-file=/opt/env'
             self.docker_client.containers.run(
-                'docker/compose:alpine-1.29.2',
-                f'-f /opt/docker-compose.yml {env_file_cli} up {service_name}',
+                'docker:23.0.1-cli-alpine3.17',
+                f'compose -f /opt/docker-compose.yml {env_file_cli} up {service_name}',
                 name=f'{service_name}_creator',
                 volumes=volumes,
                 # remove=True,
@@ -377,8 +377,8 @@ class ContainerService(BaseContainerService):
             }
             env_file_cli = '--env-file=/opt/env'
         self.docker_client.containers.run(
-            'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
+            'docker:23.0.1-cli-alpine3.17',
+            f'compose -f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
             volumes=volumes,
             environment=env
         )
@@ -426,8 +426,8 @@ class ContainerService(BaseContainerService):
             }
             env_file_cli = '--env-file=/opt/env'
         self.docker_client.containers.run(
-            'docker/compose:alpine-1.29.2',
-            f'-f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
+            'docker:23.0.1-cli-alpine3.17',
+            f'compose -f /opt/docker-compose.yml {env_file_cli} up -d {self._get_exec_container_name()}',
             volumes=volumes,
             environment=env
         )
