@@ -7,8 +7,8 @@ from dc_test_exec.docker_compose_test_executor import TestContainer
 
 
 def main():
-    path = abspath('/home/osvaldo/projects/app/integration-tests/splunk_pointertrace.yml')
-    env_file = abspath('/home/osvaldo/projects/app/integration-tests/otel_grpc.env')
+    path = abspath('/home/osvaldo/projects/app/integration-tests/test_config/compare_otel_grpc/splunk_pointertrace.yml')
+    # env_file = abspath('/home/osvaldo/projects/app/integration-tests/otel_grpc.env')
     # extra_env = {
     #     'APPDIR': '/home/osvaldo/projects/app/splunk-app/app',
     #     'TRACESDIR': '/home/osvaldo/projects/app/collector/tests/traces'
@@ -21,7 +21,8 @@ def main():
     # os.environ['EXTRA_ARGS'] = '/opt/traces_splunk'
 
     env = {**dict(os.environ), **dict({})}
-    test_container = TestContainer(path, env,env_file, False, print)
+    # test_container = TestContainer(path, env,env_file, False, print)
+    test_container = TestContainer(path, env, None, False, print)
     # test_container.clear(['jaeger-ui', 'splunk'], [])
     # test_container.run_exec_container()
     # test_container.clear([],['jaeger-ui', 'splunk'])

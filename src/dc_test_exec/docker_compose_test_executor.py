@@ -50,6 +50,18 @@ class BaseReadinessCheck:
         pass
 
 
+class ComposeReadinessCheck:
+
+    def __init__(self, health_checks: list[BaseReadinessCheck]):
+        self._health_checks = health_checks
+
+    def is_ready(self, service_name: str, service_ip: str) -> bool:
+        for health_check in self._health_checks:
+            if not health_check.is_ready(service_name, service_ip):
+                return False
+        return True
+
+
 class Services:
 
     def __init__(self, compose_file_path: Path,
@@ -243,7 +255,8 @@ class ContainerService(BaseContainerService):
         if 'readiness_check' in kwargs:
             self.readiness_check = kwargs.get('readiness_check')
         else:
-            self.readiness_check = HttpReadinessCheck(self.compose_file)
+            self.readiness_check = ComposeReadinessCheck([HttpReadinessCheck(self.compose_file),
+                                                          HealthReadinessCheck(self.docker_client, self.compose_file)])
 
     def __del__(self):
         self.docker_client.close()
@@ -505,6 +518,22 @@ def check(config: dict) -> Tuple[bool, any]:
     finally:
         if connection is not None:
             connection.close()
+
+
+class HealthReadinessCheck(BaseReadinessCheck):
+
+    def __init__(self, docker_client, compose_file):
+        self.docker_client = docker_client
+        self.compose_file = compose_file
+        self.api_client = docker.APIClient(base_url='unix://var/run/docker.sock')
+
+    def is_ready(self, service_name: str, service_ip: str) -> bool:
+        if 'x-container-readiness-check' not in self.compose_file['services'][service_name]:
+            return True
+        info = self.api_client.inspect_container(service_name)
+        if 'Health' in info['State']:
+            return info['State']['Health']['Status'] == 'healthy'
+        return True
 
 
 class HttpReadinessCheck(BaseReadinessCheck):
